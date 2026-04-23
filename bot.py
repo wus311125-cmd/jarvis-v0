@@ -16,6 +16,37 @@ VAULT = Path(os.environ["OBSIDIAN_VAULT"])
 _SPEAKER_RE = re.compile(r"^\*\*\[\d{2}:\d{2}\]\s+(Hopan|緣一)\*\*\s*:")
 _SESSION_HEADER_RE = re.compile(r"^##\s+Session\s+\d+")
 
+_SESSION_N_RE = re.compile(r"^##\s+Session\s+(\d+)")
+
+def ensure_session_header(cooldown_min: int = 30) -> int:
+    """喺今日 daily note append session header，return N。
+    優先順序：env JARVIS_SESSION > 30 min cooldown 重用 > 今日最大+1 > 1。"""
+    today = datetime.date.today().isoformat()
+    path = VAULT / "05-Daily" / f"{today}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    now = datetime.datetime.now()
+    env_override = os.environ.get("JARVIS_SESSION")
+    if env_override and env_override.isdigit():
+        n = int(env_override)
+    else:
+        n_max = 0
+        last_time = None
+        if path.exists():
+            for line in path.read_text(encoding="utf-8").splitlines():
+                m = _SESSION_N_RE.match(line)
+                if m:
+                    n_max = max(n_max, int(m.group(1)))
+                    ts_m = re.search(r"(\d{2}):(\d{2})", line)
+                    if ts_m:
+                        last_time = now.replace(hour=int(ts_m.group(1)), minute=int(ts_m.group(2)), second=0, microsecond=0)
+        if last_time is not None and (now - last_time).total_seconds() / 60 < cooldown_min:
+            return n_max
+        n = n_max + 1
+    with path.open("a", encoding="utf-8") as f:
+        f.write(f"\n\n## Session {n} \u2014 {now.strftime('%H:%M')} \u958b\u5834\n")
+    return n
+
+
 def append_to_daily(role: str, text: str):
     today = datetime.date.today().isoformat()
     path = VAULT / "05-Daily" / f"{today}.md"
@@ -115,7 +146,8 @@ def main():
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("stop", stop))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
-    print("\U0001F431 緣一 Jarvis v0.1 running...")
+    session_n = ensure_session_header()
+    print(f"\U0001F431 緣一 Jarvis v0.1 running... (Session {session_n})")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 if __name__ == "__main__":
