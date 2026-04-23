@@ -1,0 +1,122 @@
+import os, asyncio, subprocess, datetime, re
+from pathlib import Path
+from dotenv import load_dotenv
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder, CommandHandler, MessageHandler,
+    filters, ContextTypes,
+)
+
+load_dotenv()
+
+TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+ALLOWED = int(os.environ["ALLOWED_USER_ID"])
+VAULT = Path(os.environ["OBSIDIAN_VAULT"])
+
+_SPEAKER_RE = re.compile(r"^\*\*\[\d{2}:\d{2}\]\s+(Hopan|緣一)\*\*\s*:")
+_SESSION_HEADER_RE = re.compile(r"^##\s+Session\s+\d+")
+
+def append_to_daily(role: str, text: str):
+    today = datetime.date.today().isoformat()
+    path = VAULT / "05-Daily" / f"{today}.md"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    ts = datetime.datetime.now().strftime("%H:%M")
+    with path.open("a", encoding="utf-8") as f:
+        f.write(f"\n**[{ts}] {role}**: {text}\n")
+
+def load_today_context(max_lines: int = 20) -> str:
+    """Zone 1 hot context：只 inject Hopan 發言 + session headers，filter 走緣一 reply。"""
+    today = datetime.date.today().isoformat()
+    path = VAULT / "05-Daily" / f"{today}.md"
+    if not path.exists():
+        return ""
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return ""
+    filtered: list[str] = []
+    current_speaker: str | None = None
+    for line in lines:
+        m = _SPEAKER_RE.match(line)
+        if m:
+            current_speaker = m.group(1)
+            if current_speaker == "Hopan":
+                filtered.append(line)
+            continue
+        if _SESSION_HEADER_RE.match(line):
+            current_speaker = None
+            filtered.append(line)
+            continue
+        if current_speaker is None:
+            filtered.append(line)
+            continue
+        if current_speaker == "Hopan":
+            filtered.append(line)
+    tail = filtered[-max_lines:]
+    return "\n".join(tail).strip()
+
+def ask_opencode(prompt: str) -> str:
+    context = load_today_context()
+    if context:
+        wrapped = (
+            "## 今日 Hopan 發言 tail（你嘅 Zone 1 hot context，已 filter 走你自己嘅 reply）\n"
+            f"{context}\n\n---\n\n"
+            f"## Hopan 啱啱講\n{prompt}"
+        )
+    else:
+        wrapped = prompt
+    try:
+        result = subprocess.run(
+            ["/Users/nhp/.local/bin/opencode", "run",
+             "--agent", "yuen-yat",
+             "--model", "github-copilot/gpt-5-mini",
+             wrapped],
+            capture_output=True, text=True, timeout=120,
+        )
+        out = (result.stdout or "").strip()
+        err = (result.stderr or "").strip()
+        return out or err or "(緣一冇聲出)"
+    except subprocess.TimeoutExpired:
+        return "……諗緊嘢，超時。再試或 /stop。"
+    except FileNotFoundError:
+        return "搵唔到 opencode CLI。"
+
+async def guard(update: Update) -> bool:
+    if update.effective_user.id != ALLOWED:
+        await update.message.reply_text("你唔係 Hopan。再見。")
+        return False
+    return True
+
+async def start(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    if not await guard(update): return
+    await update.message.reply_text("🐱 緣一 online。直接打字就得。\n指令：/stop /help")
+
+async def help_cmd(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    if not await guard(update): return
+    await update.message.reply_text("直接打字 = 同緣一傾偈\n/stop = 緊急鍵\n每句對話都 append 去 Obsidian daily note。")
+
+async def stop(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    if not await guard(update): return
+    await update.message.reply_text("⛔ 停。（v0.1 placeholder）")
+
+async def on_message(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    if not await guard(update): return
+    user_msg = update.message.text or ""
+    await update.message.reply_chat_action("typing")
+    append_to_daily("Hopan", user_msg)
+    reply = await asyncio.to_thread(ask_opencode, user_msg)
+    append_to_daily("緣一", reply)
+    for i in range(0, len(reply), 3800):
+        await update.message.reply_text(reply[i:i+3800])
+
+def main():
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("help", help_cmd))
+    app.add_handler(CommandHandler("stop", stop))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
+    print("\U0001F431 緣一 Jarvis v0.1 running...")
+    app.run_polling(allowed_updates=Update.ALL_TYPES)
+
+if __name__ == "__main__":
+    main()
