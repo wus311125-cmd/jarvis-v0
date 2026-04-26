@@ -130,15 +130,94 @@ async def stop(update: Update, _: ContextTypes.DEFAULT_TYPE):
     if not await guard(update): return
     await update.message.reply_text("⛔ 停。（v0.1 placeholder）")
 
+import sys
+sys.path.insert(0, os.path.expanduser('~/oh-my-opencode/skills/leak-linter'))
+from linter import lint
+# import skills
+from skills import intake
+import json, hashlib
+from datetime import datetime, timedelta
+import requests
+
+AUDIT_LOG = os.path.expanduser('~/.opencode/leak-linter.log')
+MAX_RETRY = 3
+BLOCK_TIMESTAMPS = []
+LEAK_LINTER_FROZEN = False
+WEBHOOK = os.environ.get("TELEGRAM_HOPAN_OS_WEBHOOK")
+
 async def on_message(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    global LEAK_LINTER_FROZEN
     if not await guard(update): return
     user_msg = update.message.text or ""
     await update.message.reply_chat_action("typing")
     append_to_daily("Hopan", user_msg)
+
+    # Leak-linter freeze: block all future OMO
+    if LEAK_LINTER_FROZEN:
+        await update.message.reply_text("yuen-yat 已 freeze，請睇 audit log")
+        return
+
     reply = await asyncio.to_thread(ask_opencode, user_msg)
+    for attempt in range(MAX_RETRY):
+        result = lint(reply)
+        if not result.get('blocked'):
+            break
+        # Audit log
+        os.makedirs(os.path.dirname(AUDIT_LOG), exist_ok=True)
+        with open(AUDIT_LOG, 'a') as f:
+            f.write(json.dumps({
+                'timestamp': datetime.now().isoformat(),
+                'agent': 'yuen-yat',
+                'rule_id': result.get('rule_id'),
+                'matched_text': result.get('matched_text', ''),
+                'draft_hash': hashlib.sha256(reply.encode()).hexdigest()[:16]
+            }) + '\n')
+        # Tracking block timestamps (1hr window)
+        now = datetime.now()
+        BLOCK_TIMESTAMPS.append(now)
+        # Only keep the last 1hr entries
+        BLOCK_TIMESTAMPS[:] = [t for t in BLOCK_TIMESTAMPS if (now - t) < timedelta(hours=1)]
+        block_count = len(BLOCK_TIMESTAMPS)
+        # If 3+ blocks in 1hr, alert and freeze
+        if block_count >= 3 and not LEAK_LINTER_FROZEN:
+            LEAK_LINTER_FROZEN = True
+            if WEBHOOK:
+                msg = f"\u26a0\ufe0f leak-linter alert: {result.get('rule_id')} blocked {block_count} times in 1hr. Agent auto-frozen."
+                try:
+                    requests.post(WEBHOOK, json={"text": msg})
+                except Exception:
+                    pass
+        if attempt < MAX_RETRY - 1 and not LEAK_LINTER_FROZEN:
+            reply = await asyncio.to_thread(ask_opencode, user_msg)
+        else:
+            reply = f"[REDACTED: leak-linter 連續 3 次 catch {result.get('rule_id')}]\nyuen-yat 已 auto-freeze。請睇 ~/.opencode/leak-linter.log。"
+            break
+
     append_to_daily("緣一", reply)
     for i in range(0, len(reply), 3800):
         await update.message.reply_text(reply[i:i+3800])
+
+
+async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    if not await guard(update): return
+    # show typing ASAP (AC-1 requirement: start processing within 3s)
+    await update.message.reply_chat_action("typing")
+    # download highest-res photo
+    photo = update.message.photo[-1]
+    bio = await photo.get_file()
+    img_bytes = await bio.download_as_bytearray()
+    # classify and extract
+    record = {
+        "timestamp": datetime.datetime.now().isoformat(),
+        "source": "telegram",
+        "raw_input": "<binary omitted>",
+    }
+    parsed = await asyncio.to_thread(intake.classify_and_extract, bytes(img_bytes))
+    record.update(parsed)
+    rowid = await asyncio.to_thread(intake.store_intake, record)
+    reply = intake.format_confirmation(record)
+    await update.message.reply_text(reply)
+
 
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
@@ -146,6 +225,8 @@ def main():
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("stop", stop))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
+    # register photo handler
+    app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     session_n = ensure_session_header()
     print(f"\U0001F431 緣一 Jarvis v0.1 running... (Session {session_n})")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
