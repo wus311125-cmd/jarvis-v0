@@ -13,12 +13,29 @@ types:
     name: 相片
     priority: 50
     handler: intake
+    examples:
+      - "一張海邊風景相"
+      - "門口自拍照"
+      - "公司活動大合照"
   - id: expense_text
     name: 費用（文字）
     priority: 90
     handler: expense
-    pattern: '^(?:expense\\b|費用\\b)|^\\d+(?:\\.\\d+)?(?:\\s*(?:HKD|USD|CNY))?'
+    patterns:
+      text_regex: '^(?:expense\\b|費用\\b)|^-?\\d+(?:\\.\\d+)?(?:\\s*(?:HKD|USD|CNY))?$'
+    examples:
+      - "12.5 lunch McCafe"
+      - "-85 食飯"
+      - "午餐 45 蚊"
   - id: expense_image
     name: 費用（相片）
     priority: 60
     handler: expense
+
+_llm_config:
+  model: "openai/gpt-4.1-nano"
+  max_tokens: 100
+  temperature: 0
+  confidence_thresholds:
+    auto: 0.8
+    ask_user: 0.5

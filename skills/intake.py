@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict
 from pathlib import Path
 import classify
+import asyncio
 import base64
 import requests
 from dotenv import load_dotenv
@@ -115,6 +116,7 @@ def classify_and_extract(image_bytes: bytes) -> Dict[str, Any]:
             # Return a minimal, spec-compliant structure so downstream code can proceed.
             # offline fallback: attempt local classify via registry
             extracted = {"description": "(offline fallback) 無法呼叫 OpenRouter"}
+            # use classify.get_type for offline heuristics
             t = classify.get_type(extracted)
             return {
                 "type": t,

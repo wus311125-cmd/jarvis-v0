@@ -222,6 +222,19 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
         "raw_input": "<binary omitted>",
     }
     parsed = await asyncio.to_thread(intake.classify_and_extract, bytes(img_bytes))
+    # After extraction, run async classify for type validation (LLM fallback possible)
+    try:
+        # call classify.classify (async) with extracted summary if available
+        summary = parsed.get('extracted_json', {}).get('summary') or parsed.get('extracted_json', {}).get('description') or ''
+        if summary:
+            # schedule async classify
+            coro = classify.classify(summary)
+            loop = asyncio.get_event_loop()
+            cls_res = loop.run_until_complete(coro)
+            if cls_res and cls_res.type != 'unknown':
+                parsed['type'] = cls_res.type
+    except Exception:
+        pass
     record.update(parsed)
     rowid = await asyncio.to_thread(intake.store_intake, record)
     reply = intake.format_confirmation(record)
@@ -257,7 +270,7 @@ def main():
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("stop", stop))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
     # register photo handler
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     # generic text handler (registry-driven)

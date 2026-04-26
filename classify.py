@@ -25,18 +25,51 @@ def get_type(extracted: Dict[str, Any]) -> str:
     return 'photo'
 
 
-def match_text_to_type(text: str) -> str | None:
+import asyncio
+
+
+class ClassifyResult:
+    def __init__(self, type_id: str, confidence: float = 1.0, extracted: dict | None = None):
+        self.type = type_id
+        self.confidence = confidence
+        self.extracted = extracted or {}
+
+
+def _regex_match_text(text: str) -> str | None:
     reg = load_registry()
     types = reg.get('types', [])
     import re
     for t in sorted(types, key=lambda x: -x.get('priority', 0)):
-        pattern = t.get('pattern')
+        patterns = t.get('patterns') or {}
+        pattern = patterns.get('text_regex')
         if not pattern:
             continue
         try:
             if re.search(pattern, text, flags=re.IGNORECASE):
                 return t.get('id')
         except re.error:
-            # skip invalid pattern
             continue
     return None
+
+
+def match_text_to_type(text: str) -> str | None:
+    return _regex_match_text(text)
+
+
+async def llm_classify(text: str) -> ClassifyResult:
+    # placeholder: call OpenRouter or OpenAI via HTTP; for now return unknown
+    await asyncio.sleep(0)  # async placeholder
+    # simple heuristic: if chinese contains '午餐' or '食', guess expense_text
+    lower = text.lower()
+    if '午餐' in text or '食' in text or '餐' in text:
+        return ClassifyResult('expense_text', 0.7)
+    return ClassifyResult('unknown', 0.0)
+
+
+async def classify(text: str, attachments=None) -> ClassifyResult:
+    # Layer 1: regex fast path
+    t = _regex_match_text(text)
+    if t:
+        return ClassifyResult(t, 1.0)
+    # Layer 2: LLM fallback
+    return await llm_classify(text)
