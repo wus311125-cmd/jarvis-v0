@@ -134,7 +134,7 @@ import sys
 sys.path.insert(0, os.path.expanduser('~/oh-my-opencode/skills/leak-linter'))
 from linter import lint
 # import skills
-from skills import intake
+from skills import intake, expense
 import json, hashlib
 from datetime import datetime, timedelta
 import requests
@@ -219,6 +219,30 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(reply)
 
 
+async def on_expense(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    if not await guard(update): return
+    text = update.message.text or ""
+    # strip leading keyword
+    text = text.replace('expense', '').replace('費用', '').strip()
+    try:
+        parsed = expense.parse_expense_text(text)
+    except Exception:
+        await update.message.reply_text("唔好意思，請用格式：金額 [貨幣] [分類] [商戶] [YYYY-MM-DD] [備註]")
+        return
+    rec = {
+        "timestamp": datetime.datetime.now().isoformat(),
+        "amount": parsed.get('amount'),
+        "currency": parsed.get('currency','HKD'),
+        "category": parsed.get('category'),
+        "merchant": parsed.get('merchant'),
+        "date": parsed.get('date'),
+        "note": parsed.get('note',''),
+        "source": 'telegram',
+    }
+    rowid = await asyncio.to_thread(expense.store_expense, rec)
+    await update.message.reply_text(expense.format_expense_confirmation(rec))
+
+
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
@@ -227,6 +251,8 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
     # register photo handler
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
+    # expense quick-add: messages starting with "expense" or "費用" trigger parse
+    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^(expense\b|費用\b)', flags=0), on_expense))
     session_n = ensure_session_header()
     print(f"\U0001F431 緣一 Jarvis v0.1 running... (Session {session_n})")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
