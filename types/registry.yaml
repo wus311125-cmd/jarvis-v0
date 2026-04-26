@@ -17,6 +17,7 @@ types:
     name: 費用（文字）
     priority: 90
     handler: expense
+    pattern: '^(?:expense\\b|費用\\b)|^\\d+(?:\\.\\d+)?(?:\\s*(?:HKD|USD|CNY))?'
   - id: expense_image
     name: 費用（相片）
     priority: 60

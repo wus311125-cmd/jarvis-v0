@@ -137,7 +137,7 @@ from linter import lint
 from skills import intake, expense
 import classify
 import json, hashlib
-from datetime import datetime, timedelta
+from datetime import timedelta
 import requests
 
 AUDIT_LOG = os.path.expanduser('~/.opencode/leak-linter.log')
@@ -146,57 +146,65 @@ BLOCK_TIMESTAMPS = []
 LEAK_LINTER_FROZEN = False
 WEBHOOK = os.environ.get("TELEGRAM_HOPAN_OS_WEBHOOK")
 
-async def on_message(update: Update, _: ContextTypes.DEFAULT_TYPE):
-    global LEAK_LINTER_FROZEN
+async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
+    """Generic text handler — registry-driven dispatch."""
     if not await guard(update): return
-    user_msg = update.message.text or ""
+    text = (update.message.text or "").strip()
     await update.message.reply_chat_action("typing")
-    append_to_daily("Hopan", user_msg)
+    append_to_daily("Hopan", text)
 
-    # Leak-linter freeze: block all future OMO
-    if LEAK_LINTER_FROZEN:
-        await update.message.reply_text("yuen-yat 已 freeze，請睇 audit log")
+    # match text to type via registry patterns
+    t = classify.match_text_to_type(text)
+    if not t:
+        # friendly fallback
+        await update.message.reply_text("唔好意思，我暫時未識處理呢類訊息。試下傳相或用 'expense 12.5 lunch' 格式。")
         return
 
-    reply = await asyncio.to_thread(ask_opencode, user_msg)
-    for attempt in range(MAX_RETRY):
-        result = lint(reply)
-        if not result.get('blocked'):
-            break
-        # Audit log
-        os.makedirs(os.path.dirname(AUDIT_LOG), exist_ok=True)
-        with open(AUDIT_LOG, 'a') as f:
-            f.write(json.dumps({
-                'timestamp': datetime.now().isoformat(),
-                'agent': 'yuen-yat',
-                'rule_id': result.get('rule_id'),
-                'matched_text': result.get('matched_text', ''),
-                'draft_hash': hashlib.sha256(reply.encode()).hexdigest()[:16]
-            }) + '\n')
-        # Tracking block timestamps (1hr window)
-        now = datetime.now()
-        BLOCK_TIMESTAMPS.append(now)
-        # Only keep the last 1hr entries
-        BLOCK_TIMESTAMPS[:] = [t for t in BLOCK_TIMESTAMPS if (now - t) < timedelta(hours=1)]
-        block_count = len(BLOCK_TIMESTAMPS)
-        # If 3+ blocks in 1hr, alert and freeze
-        if block_count >= 3 and not LEAK_LINTER_FROZEN:
-            LEAK_LINTER_FROZEN = True
-            if WEBHOOK:
-                msg = f"\u26a0\ufe0f leak-linter alert: {result.get('rule_id')} blocked {block_count} times in 1hr. Agent auto-frozen."
-                try:
-                    requests.post(WEBHOOK, json={"text": msg})
-                except Exception:
-                    pass
-        if attempt < MAX_RETRY - 1 and not LEAK_LINTER_FROZEN:
-            reply = await asyncio.to_thread(ask_opencode, user_msg)
-        else:
-            reply = f"[REDACTED: leak-linter 連續 3 次 catch {result.get('rule_id')}]\nyuen-yat 已 auto-freeze。請睇 ~/.opencode/leak-linter.log。"
-            break
+    # find registry entry
+    reg = classify.load_registry()
+    entry = next((x for x in reg.get('types', []) if x.get('id') == t), None)
+    if not entry:
+        await update.message.reply_text("Internal: registry mismatch。")
+        return
 
-    append_to_daily("緣一", reply)
-    for i in range(0, len(reply), 3800):
-        await update.message.reply_text(reply[i:i+3800])
+    handler = entry.get('handler')
+    # dispatch to handler module
+    if handler == 'expense':
+        # treat as expense_text
+        try:
+            parsed = expense.parse_expense_text(text)
+        except Exception:
+            await update.message.reply_text("唔好意思，請用格式：金額 [貨幣] [分類] [商戶] [YYYY-MM-DD] [備註]")
+            return
+        rec = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "amount": parsed.get('amount'),
+            "currency": parsed.get('currency','HKD'),
+            "category": parsed.get('category'),
+            "merchant": parsed.get('merchant'),
+            "date": parsed.get('date'),
+            "note": parsed.get('note',''),
+            "source": 'text',
+        }
+        rowid = await asyncio.to_thread(expense.store_expense, rec)
+        await update.message.reply_text(expense.format_expense_confirmation(rec))
+        return
+
+    if handler == 'intake':
+        # create a manual intake record from text summary
+        rec = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "type": entry.get('id') if entry.get('id') in ('receipt','screenshot','photo') else 'photo',
+            "raw_input": text,
+            "extracted_json": {"summary": text},
+            "source": 'manual',
+        }
+        rowid = await asyncio.to_thread(intake.store_intake, rec)
+        await update.message.reply_text(intake.format_confirmation(rec))
+        return
+
+    # other handlers not implemented yet
+    await update.message.reply_text("這種類型已設定但 handler 未實作。")
 
 
 async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
@@ -252,8 +260,8 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_message))
     # register photo handler
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
-    # expense quick-add: messages starting with "expense" or "費用" trigger parse
-    app.add_handler(MessageHandler(filters.TEXT & filters.Regex(r'^(expense\b|費用\b)', flags=0), on_expense))
+    # generic text handler (registry-driven)
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
     session_n = ensure_session_header()
     print(f"\U0001F431 緣一 Jarvis v0.1 running... (Session {session_n})")
     app.run_polling(allowed_updates=Update.ALL_TYPES)

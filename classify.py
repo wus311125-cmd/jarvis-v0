@@ -14,7 +14,8 @@ def get_type(extracted: Dict[str, Any]) -> str:
     Expect extracted to have keys like 'merchant', 'amount', 'summary'
     """
     reg = load_registry()
-    # heuristics
+    types = reg.get('types', [])
+    # heuristics based on extracted content
     if not extracted:
         return 'photo'
     if extracted.get('merchant') and extracted.get('amount'):
@@ -22,3 +23,20 @@ def get_type(extracted: Dict[str, Any]) -> str:
     if extracted.get('summary') and len(extracted.get('summary','')) > 10:
         return 'screenshot'
     return 'photo'
+
+
+def match_text_to_type(text: str) -> str | None:
+    reg = load_registry()
+    types = reg.get('types', [])
+    import re
+    for t in sorted(types, key=lambda x: -x.get('priority', 0)):
+        pattern = t.get('pattern')
+        if not pattern:
+            continue
+        try:
+            if re.search(pattern, text, flags=re.IGNORECASE):
+                return t.get('id')
+        except re.error:
+            # skip invalid pattern
+            continue
+    return None
