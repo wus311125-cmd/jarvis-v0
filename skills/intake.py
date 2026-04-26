@@ -4,6 +4,8 @@ import sqlite3
 import datetime
 from pathlib import Path
 from typing import Any, Dict
+from pathlib import Path
+import classify
 import base64
 import requests
 from dotenv import load_dotenv
@@ -111,9 +113,12 @@ def classify_and_extract(image_bytes: bytes) -> Dict[str, Any]:
         except Exception as e:
             # Network or API error: fall back to a safe local heuristic to allow offline dev/tests
             # Return a minimal, spec-compliant structure so downstream code can proceed.
+            # offline fallback: attempt local classify via registry
+            extracted = {"description": "(offline fallback) 無法呼叫 OpenRouter"}
+            t = classify.get_type(extracted)
             return {
-                "type": "photo",
-                "extracted_json": {"description": "(offline fallback) 無法呼叫 OpenRouter，回傳預設描述"}
+                "type": t,
+                "extracted_json": extracted
             }
 
 

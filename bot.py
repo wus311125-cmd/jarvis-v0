@@ -135,6 +135,7 @@ sys.path.insert(0, os.path.expanduser('~/oh-my-opencode/skills/leak-linter'))
 from linter import lint
 # import skills
 from skills import intake, expense
+import classify
 import json, hashlib
 from datetime import datetime, timedelta
 import requests
