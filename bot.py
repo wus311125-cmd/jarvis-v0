@@ -227,13 +227,11 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
         # call classify.classify (async) with extracted summary if available
         summary = parsed.get('extracted_json', {}).get('summary') or parsed.get('extracted_json', {}).get('description') or ''
         if summary:
-            # schedule async classify
-            coro = classify.classify(summary)
-            loop = asyncio.get_event_loop()
-            cls_res = loop.run_until_complete(coro)
+            cls_res = await classify.classify(summary)
             if cls_res and cls_res.type != 'unknown':
                 parsed['type'] = cls_res.type
     except Exception:
+        # be conservative: ignore LLM errors and continue with parsed result
         pass
     record.update(parsed)
     rowid = await asyncio.to_thread(intake.store_intake, record)
