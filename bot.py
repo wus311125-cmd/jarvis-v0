@@ -63,6 +63,10 @@ def append_to_daily(role: str, text: str):
 def format_image_confirmation(result: dict) -> str:
     """緣一語氣回覆 — 廣東話口語 + emoji"""
     try:
+        logger.info("DEBUG format_image_confirmation: input=%s", str(result)[:200])
+    except Exception:
+        pass
+    try:
         data = result.get("extracted_json", {})
         if isinstance(data, str):
             import json
@@ -298,20 +302,23 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
         pass
 
     # confidence-driven flow
-    # prefer top-level confidence, fallback to extracted.confidence or extracted_json.confidence
+    # use the confidence already computed above (from parsed / extracted), avoid reassigning
     ex = parsed.get('extracted_json', {}) if isinstance(parsed, dict) else {}
-    # simplified confidence extraction: top-level parsed -> parsed.extracted -> extracted_json
-    try:
-        confidence = 0
-        if isinstance(parsed, dict):
-            confidence = parsed.get("confidence") or (parsed.get("extracted") or {}).get("confidence") or (ex or {}).get("confidence") or 0
-            try:
-                confidence = float(confidence)
-            except Exception:
-                confidence = 0
-    except Exception:
-        confidence = 0
     conf = float(confidence or 0.0)
+
+    # DEBUG: parsed keys and confidence
+    try:
+        logger.info("DEBUG on_photo: parsed keys=%s, confidence=%.2f, threshold=%.2f",
+                    list(parsed.keys()) if isinstance(parsed, dict) else str(type(parsed)),
+                    float(confidence or 0.0), intake.CONFIDENCE_THRESHOLD)
+    except Exception:
+        logger.exception("DEBUG on_photo: failed to log parsed keys")
+
+    # DEBUG: which flow we're going to use
+    try:
+        logger.info("DEBUG on_photo: will use %s flow", "auto-confirm" if float(confidence or 0.0) >= intake.CONFIDENCE_THRESHOLD else "ask_user")
+    except Exception:
+        pass
 
     if conf >= intake.CONFIDENCE_THRESHOLD:
         # auto-confirmed
