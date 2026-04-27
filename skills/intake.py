@@ -76,11 +76,34 @@ def _call_openrouter_model(image_bytes: bytes, model: str, timeout: int = 30, ca
     url = "https://openrouter.ai/api/v1/chat/completions"
     b64 = base64.b64encode(image_bytes).decode('ascii')
     prompt = (
-        "You are a vision extraction assistant. Input: base64 image string. "
-        "Return a JSON object only with keys: type (receipt|screenshot|photo), extracted_json (object). "
-        "For receipt: extracted_json should contain merchant, amount, date. "
-        "For screenshot: title, summary. For photo: description. "
-        "Date format YYYY-MM-DD. Currency HKD by default. Respond with JSON only."
+        "你係一個圖片分類助手。分析呢張圖片，回覆一個 JSON object。\n\n"
+        "只有 3 個 type：receipt、screenshot、photo。\n\n"
+        "JSON schema（嚴格跟）：\n"
+        "{\n"
+        "  \"type\": \"receipt\" | \"screenshot\" | \"photo\",\n"
+        "  \"confidence\": 0.0 到 1.0,\n"
+        "  \"extracted\": {\n"
+        "    \"merchant\": \"商戶名（如有）\",\n"
+        "    \"amount\": 數字（float，唔好加 $ 符號），\n"
+        "    \"currency\": \"HKD\" | \"USD\" | \"CNY\"（預設 HKD），\n"
+        "    \"date\": \"YYYY-MM-DD\"（如有）\n"
+        "  },\n"
+        "  \"summary\": \"繁體中文一句描述\"\n"
+        "}\n\n"
+        "規則：\n"
+        "- receipt：有金額/價錢嘅單據、發票、收據。必填 merchant + amount + currency + date。\n"
+        "- screenshot：手機或電腦截圖。必填 summary。extracted 可以留空值。\n"
+        "- photo：普通相片。必填 summary。extracted 可以留空值。\n"
+        "- 如果睇唔清楚金額或商戶，填空字串 \"\"，唔好亂估。confidence 反映你幾肯定。\n"
+        "- amount 一定係正數 float（例如 45.0），唔好加貨幣符號，唔好用負數。\n"
+        "- 只回覆 JSON，唔好加任何其他文字。\n\n"
+        "Few-shot examples：\n\n"
+        "Example 1（receipt）：\n"
+        "{\"type\": \"receipt\", \"confidence\": 0.9, \"extracted\": {\"merchant\": \"大快活\", \"amount\": 45.0, \"currency\": \"HKD\", \"date\": \"2026-04-27\"}, \"summary\": \"大快活午餐收據 $45\"}\n\n"
+        "Example 2（screenshot）：\n"
+        "{\"type\": \"screenshot\", \"confidence\": 0.85, \"extracted\": {\"merchant\": \"\", \"amount\": 0, \"currency\": \"HKD\", \"date\": \"\"}, \"summary\": \"WhatsApp 對話截圖，討論禮拜三上堂時間\"}\n\n"
+        "Example 3（photo）：\n"
+        "{\"type\": \"photo\", \"confidence\": 0.95, \"extracted\": {\"merchant\": \"\", \"amount\": 0, \"currency\": \"HKD\", \"date\": \"\"}, \"summary\": \"街頭夜景，有霓虹燈招牌\"}\n"
     )
     user_content = [
         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
@@ -122,19 +145,33 @@ def classify_and_extract(image_bytes: bytes, caption: str = "") -> Dict[str, Any
     for model in (primary, fallback):
         try:
             parsed = _call_openrouter_model(image_bytes, model, timeout=30, caption=caption)
-            # parsed should be a dict; ensure it has type and extracted_json
-            if isinstance(parsed, dict) and parsed.get('type') and parsed.get('extracted_json') is not None:
-                return parsed
+            # Normalize model output: accept either 'extracted' (new) or 'extracted_json' (old)
+            if not isinstance(parsed, dict):
+                continue
+            parsed_type = parsed.get('type')
+            extracted = parsed.get('extracted') if parsed.get('extracted') is not None else parsed.get('extracted_json')
+            # ensure extracted is a dict
+            if not isinstance(extracted, dict):
+                extracted = {}
+
+            # Accept only the three canonical types
+            if parsed_type in ('receipt', 'screenshot', 'photo'):
+                return {
+                    'type': parsed_type,
+                    'extracted_json': extracted,
+                    'confidence': float(parsed.get('confidence', 0.0))
+                }
         except Exception:
             # try next model
             continue
 
     # If we reach here, both attempts failed or returned unparsable content
     import traceback; traceback.print_exc()
-    logger.warning('vision API failed or returned invalid JSON; falling back to photo — error: %s')
+    logger.warning('vision API failed or returned invalid JSON; falling back to unknown — error: %s')
     return {
-        "type": "photo",
-        "extracted_json": {"description": "無法辨識"}
+        "type": "unknown",
+        "extracted_json": {},
+        "confidence": 0.0
     }
 
 

@@ -55,6 +55,48 @@ def append_to_daily(role: str, text: str):
     with path.open("a", encoding="utf-8") as f:
         f.write(f"\n**[{ts}] {role}**: {text}\n")
 
+
+def format_image_confirmation(result: dict) -> str:
+    """緣一語氣回覆 — 廣東話口語 + emoji"""
+    try:
+        data = result.get("extracted_json", {})
+        if isinstance(data, str):
+            import json
+            data = json.loads(data)
+        img_type = result.get("type") or (data.get("type") if isinstance(data, dict) else "photo")
+        extracted = {}
+        if isinstance(data, dict):
+            extracted = data.get("extracted", {}) if data.get("extracted") is not None else data
+        if not isinstance(extracted, dict):
+            extracted = {}
+        summary = (data.get("summary") if isinstance(data, dict) else None) or extracted.get("summary", "")
+
+        if img_type == "receipt":
+            merchant = extracted.get("merchant", "") or extracted.get("vendor", "")
+            amount = extracted.get("amount", 0)
+            currency = extracted.get("currency", "HKD")
+            if merchant and amount:
+                return f"🧾 收到！{merchant} ${amount}，我記低咗。"
+            elif amount:
+                return f"🧾 收到一張單，${amount}。商戶我睇唔太清，你補返？"
+            else:
+                return "🧾 好似係張單，但我睇唔到金額。你可以話我知幾錢？"
+
+        elif img_type == "screenshot":
+            if summary:
+                return f"📱 Screenshot 收到：{summary}"
+            return "📱 Screenshot 收到，我記低咗。"
+
+        elif img_type == "photo":
+            if summary:
+                return f"📸 靚相！{summary}"
+            return "📸 收到張相，我記低咗。"
+
+        else:
+            return "🤔 我睇唔太清呢張，你可以話我知係咩？"
+    except Exception:
+        return "🤔 我睇唔太清呢張，你可以話我知係咩？"
+
 def load_today_context(max_lines: int = 20) -> str:
     """Zone 1 hot context：只 inject Hopan 發言 + session headers，filter 走緣一 reply。"""
     today = datetime.date.today().isoformat()
@@ -220,7 +262,14 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
         logger.exception('failed to store linked expense from image')
 
     # format reply and send (go through same reply path as text)
-    reply = intake.format_confirmation(record)
+    # Use new format_image_confirmation with graceful fallback handling
+    try:
+        reply = format_image_confirmation(record)
+        # if model returned unknown type, override with fallback message
+        if record.get('type') == 'unknown' or reply is None:
+            reply = "🤔 我睇唔太清呢張，你可以話我知係咩？"
+    except Exception:
+        reply = "🤔 我睇唔太清呢張，你可以話我知係咩？"
     # centralized send via leak-linter
     await send_reply(update, reply)
 
