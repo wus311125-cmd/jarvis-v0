@@ -22,7 +22,8 @@ types:
     priority: 20
     handler: expense
     patterns:
-      text_regex: '^(?:expense\\b|費用\\b)|^-?\\d+(?:\\.\\d+)?(?:\\s*(?:HKD|USD|CNY))?$'
+      # Match: -45  or -45 Vendor  or -45 Vendor Category  or decimals and English vendors
+      text_regex: '^\\-\\d+(?:\\.\\d+)?(?:\\s+.+)?$'
     examples:
       - "12.5 lunch McCafe"
       - "-85 食飯"
