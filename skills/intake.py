@@ -73,7 +73,7 @@ def _call_openrouter_model(image_bytes: bytes, model: str, timeout: int = 30, ca
     """Call OpenRouter completion with image as base64 + system/user prompt. Return parsed JSON or raise."""
     if not OPENROUTER_API_KEY:
         raise RuntimeError("OPENROUTER_API_KEY not set")
-    url = "https://api.openrouter.ai/v1/chat/completions"
+    url = "https://openrouter.ai/api/v1/chat/completions"
     b64 = base64.b64encode(image_bytes).decode('ascii')
     prompt = (
         "You are a vision extraction assistant. Input: base64 image string. "
