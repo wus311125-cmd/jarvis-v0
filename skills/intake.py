@@ -147,6 +147,8 @@ def classify_and_extract(image_bytes: bytes, caption: str = "") -> Dict[str, Any
     primary = "meta-llama/llama-4-scout"
     fallback = "meta-llama/llama-4-scout"
     # try primary then fallback; if parsing fails, return graceful photo fallback
+    from skills.normalize import normalize_extracted
+
     for model in (primary, fallback):
         try:
             parsed = _call_openrouter_model(image_bytes, model, timeout=30, caption=caption)
@@ -161,11 +163,17 @@ def classify_and_extract(image_bytes: bytes, caption: str = "") -> Dict[str, Any
 
             # Accept only the three canonical types
             if parsed_type in ('receipt', 'screenshot', 'photo'):
-                return {
+                out = {
                     'type': parsed_type,
                     'extracted_json': extracted,
                     'confidence': float(parsed.get('confidence', 0.0))
                 }
+                # normalize before return
+                try:
+                    out = normalize_extracted(out)
+                except Exception:
+                    pass
+                return out
         except Exception:
             # try next model
             continue
