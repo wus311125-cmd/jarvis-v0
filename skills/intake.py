@@ -126,6 +126,11 @@ def _call_openrouter_model(image_bytes: bytes, model: str, timeout: int = 30, ca
     data = resp.json()
     # openrouter returns choices -> message -> content
     content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+    # Log raw model response for debugging (helps capture malformed outputs)
+    try:
+        logger.info("RAW OPENROUTER JSON RESPONSE: %s", content)
+    except Exception:
+        pass
     # try parse JSON, fallback will be handled by caller
     try:
         parsed = json.loads(content)
