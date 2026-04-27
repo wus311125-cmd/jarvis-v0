@@ -308,7 +308,8 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
         # auto-confirmed
         record.update({
             "type": parsed.get('type', 'unknown'),
-            "extracted_json": ex,
+            # store full parsed payload (preserve confidence / summary / extracted)
+            "extracted_json": parsed,
             "needs_confirmation": 0,
         })
         rowid = await asyncio.to_thread(intake.store_intake, record)
@@ -343,7 +344,8 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
         text = f"🤔 我睇到似係 {summary}，但係唔太肯定。係喔係：\n① 收據\n② 截圖\n③ 相片\n回覆 1/2/3 話我知！"
         record.update({
             "type": parsed.get('type', 'unknown'),
-            "extracted_json": ex,
+            # store full parsed payload so feedback handler can preserve extracted fields
+            "extracted_json": parsed,
             "needs_confirmation": 1,
         })
         rowid = await asyncio.to_thread(intake.store_intake, record)
@@ -459,6 +461,7 @@ async def handle_feedback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> bool:
         data = json.loads(ej)
     except Exception:
         data = {}
+    # preserve existing extracted fields; only override type
     data["type"] = new_type
     cur.execute(
         "UPDATE intake SET type=?, extracted_json=?, needs_confirmation=0 WHERE id=?",

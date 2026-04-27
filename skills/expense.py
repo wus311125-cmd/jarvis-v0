@@ -37,11 +37,17 @@ def store_expense(record: Dict[str, Any], db_path: Path = DB_PATH) -> int:
     init_db(db_path)
     conn = sqlite3.connect(str(db_path))
     cur = conn.cursor()
+    # ensure amount is positive and numeric
+    try:
+        amt = float(record.get("amount", 0))
+    except Exception:
+        amt = 0.0
+    amt = abs(amt)
     cur.execute(
         "INSERT INTO expenses (timestamp, amount, currency, category, merchant, date, note, source, synced_notion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)",
         (
             record.get("timestamp"),
-            record.get("amount"),
+            amt,
             record.get("currency", "HKD"),
             record.get("category"),
             record.get("merchant"),
