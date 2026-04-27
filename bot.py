@@ -195,6 +195,11 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_chat_action("typing")
     append_to_daily("Hopan", text)
     # Pass text to intake.process_text for E2E handling (classification -> expense store -> reply)
+    # handle possible feedback message first
+    handled = await handle_feedback(update, _)
+    if handled:
+        return
+
     try:
         result = await intake.process_text(text, source='telegram')
     except Exception as e:
@@ -237,13 +242,58 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
     except Exception:
         pass
 
-    # store intake row
-    # Use 'unknown' as default type when model fails to produce a canonical type
-    record.update({
-        "type": parsed.get('type', 'unknown'),
-        "extracted_json": parsed.get('extracted_json', {})
-    })
-    rowid = await asyncio.to_thread(intake.store_intake, record)
+    # confidence-driven flow
+    ex = parsed.get('extracted_json', {}) if isinstance(parsed, dict) else {}
+    try:
+        conf = float(parsed.get('confidence', 0.0))
+    except Exception:
+        conf = 0.0
+
+    if conf >= intake.CONFIDENCE_THRESHOLD:
+        # auto-confirmed
+        record.update({
+            "type": parsed.get('type', 'unknown'),
+            "extracted_json": ex,
+            "needs_confirmation": 0,
+        })
+        rowid = await asyncio.to_thread(intake.store_intake, record)
+        # if receipt and amount present, create expense
+        try:
+            ext = ex.get('extracted', ex) if isinstance(ex, dict) else {}
+            if parsed.get('type') == 'receipt' and ext.get('amount'):
+                expense_rec = {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "amount": float(ext.get('amount')),
+                    "currency": ext.get('currency', 'HKD'),
+                    "category": ext.get('category', '其他'),
+                    "merchant": ext.get('merchant', ''),
+                    "date": ext.get('date'),
+                    "note": '',
+                    "source": 'image',
+                }
+                await asyncio.to_thread(expense.store_expense, expense_rec)
+        except Exception:
+            logger.exception('failed to store linked expense from image')
+        # reply
+        try:
+            reply = format_image_confirmation({"extracted_json": ex})
+        except Exception:
+            reply = "🤔 我睇唔太清呢張，你可以話我知係咩？"
+        await send_reply(update, reply)
+        return
+    else:
+        # ask user for confirmation (low confidence)
+        summary = ex.get('summary', '') if isinstance(ex, dict) else ''
+        type_guess = parsed.get('type', 'unknown')
+        text = f"🤔 我睇到似係 {summary}，但係唔太肯定。係喔係：\n① 收據\n② 截圖\n③ 相片\n回覆 1/2/3 話我知！"
+        record.update({
+            "type": parsed.get('type', 'unknown'),
+            "extracted_json": ex,
+            "needs_confirmation": 1,
+        })
+        rowid = await asyncio.to_thread(intake.store_intake, record)
+        await send_reply(update, text)
+        return
 
     # if receipt, and amount present, store expense
     try:
@@ -311,6 +361,65 @@ async def on_expense(update: Update, _: ContextTypes.DEFAULT_TYPE):
     }
     rowid = await asyncio.to_thread(expense.store_expense, rec)
     await update.message.reply_text(expense.format_expense_confirmation(rec))
+
+
+FEEDBACK_MAP = {
+    "1": "receipt", "收據": "receipt", "單": "receipt",
+    "2": "screenshot", "截圖": "screenshot",
+    "3": "photo", "相片": "photo", "相": "photo",
+}
+
+
+async def handle_feedback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> bool:
+    """Handle user feedback for low-confidence classifications.
+    Returns True if message consumed as feedback.
+    """
+    text = (update.message.text or "").strip()
+    if text not in FEEDBACK_MAP:
+        return False
+    new_type = FEEDBACK_MAP[text]
+    conn = sqlite3.connect(str(DB_PATH))
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT id, extracted_json FROM intake WHERE needs_confirmation=1 ORDER BY id DESC LIMIT 1"
+    )
+    row = cur.fetchone()
+    if not row:
+        conn.close()
+        return False
+    row_id, ej = row
+    try:
+        data = json.loads(ej)
+    except Exception:
+        data = {}
+    data["type"] = new_type
+    cur.execute(
+        "UPDATE intake SET type=?, extracted_json=?, needs_confirmation=0 WHERE id= ?",
+        (new_type, json.dumps(data, ensure_ascii=False), row_id),
+    )
+    conn.commit()
+
+    # If receipt → create expense
+    if new_type == "receipt":
+        ext = data.get("extracted", data)
+        amt = ext.get("amount")
+        if amt and isinstance(amt, (int, float)) and amt > 0:
+            from skills.expense import store_expense
+            try:
+                store_expense({
+                    "amount": amt,
+                    "currency": ext.get("currency", "HKD"),
+                    "merchant": ext.get("merchant", ""),
+                    "date": ext.get("date", ""),
+                    "category": "其他",
+                    "source": "image",
+                })
+            except Exception:
+                logger.exception("failed to create expense from feedback")
+
+    await send_reply(update, "✅ 收到，記低咗！")
+    conn.close()
+    return True
 
 
 def main():

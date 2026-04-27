@@ -20,6 +20,7 @@ logging.basicConfig(level=logging.INFO)
 VAULT = Path(os.environ.get("OBSIDIAN_VAULT", "~/ObsidianVault.main")).expanduser()
 DB_PATH = Path(os.environ.get("JARVIS_DB", "~/jarvis-v0/jarvis.db")).expanduser()
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+CONFIDENCE_THRESHOLD = 0.7
 
 INTAKE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS intake (
@@ -29,7 +30,8 @@ CREATE TABLE IF NOT EXISTS intake (
     raw_input TEXT,
     extracted_json TEXT NOT NULL,
     source TEXT DEFAULT 'telegram',
-    synced_notion INTEGER DEFAULT 0
+    synced_notion INTEGER DEFAULT 0,
+    needs_confirmation INTEGER DEFAULT 0
 );
 """
 
@@ -48,8 +50,15 @@ def store_intake(record: Dict[str, Any], db_path: Path = DB_PATH) -> int:
     conn = sqlite3.connect(str(db_path))
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO intake (timestamp, type, raw_input, extracted_json, source, synced_notion) VALUES (?, ?, ?, ?, ?, 0)",
-        (record.get("timestamp"), record.get("type"), record.get("raw_input"), json.dumps(record.get("extracted_json", {}), ensure_ascii=False), record.get("source", "telegram")),
+        "INSERT INTO intake (timestamp, type, raw_input, extracted_json, source, synced_notion, needs_confirmation) VALUES (?, ?, ?, ?, ?, 0, ?)",
+        (
+            record.get("timestamp"),
+            record.get("type"),
+            record.get("raw_input"),
+            json.dumps(record.get("extracted_json", {}), ensure_ascii=False),
+            record.get("source", "telegram"),
+            int(record.get("needs_confirmation", 0)),
+        ),
     )
     conn.commit()
     rowid = cur.lastrowid
@@ -148,6 +157,8 @@ def classify_and_extract(image_bytes: bytes, caption: str = "") -> Dict[str, Any
     fallback = "meta-llama/llama-4-scout"
     # try primary then fallback; if parsing fails, return graceful photo fallback
     from skills.normalize import normalize_extracted
+    # confidence threshold config
+    CONFIDENCE_THRESHOLD = 0.7
 
     for model in (primary, fallback):
         try:
