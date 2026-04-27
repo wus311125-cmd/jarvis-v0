@@ -6,6 +6,7 @@ from notion_client import Client
 import sqlite3
 import argparse
 import logging
+import re
 
 load_dotenv()
 NOTION_API_KEY = os.environ.get("NOTION_API_KEY")
@@ -139,6 +140,13 @@ def sync_expenses(dry_run: bool = False):
                 except Exception:
                     date_start = None
 
+            # Defensive: only set Date property if date_start is valid ISO date
+            def is_valid_iso_date(s: str) -> bool:
+                if not s or not isinstance(s, str):
+                    return False
+                # accept YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS (we already split T, so check date part)
+                return bool(re.match(r'^\d{4}-\d{2}-\d{2}($|T)', s))
+
             props = {
                 "Vendor": {"title": [{"text": {"content": vendor_text}}]},
                 "Amount": {"number": float(amount) if amount is not None else 0.0},
@@ -147,7 +155,7 @@ def sync_expenses(dry_run: bool = False):
                 "Source": {"select": {"name": source_val}},
                 "local_id": {"number": id_},
             }
-            if date_start:
+            if date_start and is_valid_iso_date(date_start):
                 props["Date"] = {"date": {"start": date_start}}
 
             if dry_run:
