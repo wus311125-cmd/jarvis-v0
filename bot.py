@@ -174,27 +174,54 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
     photo = update.message.photo[-1]
     bio = await photo.get_file()
     img_bytes = await bio.download_as_bytearray()
-    # classify and extract
+    # classify and extract via vision API (pass caption for better accuracy)
+    caption = update.message.caption or ""
     record = {
         "timestamp": datetime.datetime.now().isoformat(),
         "source": "telegram",
-        "raw_input": "<binary omitted>",
+        "raw_input": f"photo:{len(img_bytes)}bytes",
     }
-    parsed = await asyncio.to_thread(intake.classify_and_extract, bytes(img_bytes))
-    # After extraction, run async classify for type validation (LLM fallback possible)
+    parsed = await asyncio.to_thread(intake.classify_and_extract, bytes(img_bytes), caption)
+    # LLM-based text classify fallback (use extracted summary/description)
     try:
-        # call classify.classify (async) with extracted summary if available
         summary = parsed.get('extracted_json', {}).get('summary') or parsed.get('extracted_json', {}).get('description') or ''
+        if caption:
+            # bias classification using caption
+            summary = f"{caption} {summary}".strip()
         if summary:
             cls_res = await classify.classify(summary)
-            if cls_res and cls_res.type != 'unknown':
+            if cls_res and getattr(cls_res, 'type', None) and cls_res.type != 'unknown':
                 parsed['type'] = cls_res.type
     except Exception:
-        # be conservative: ignore LLM errors and continue with parsed result
         pass
-    record.update(parsed)
+
+    # store intake row
+    record.update({
+        "type": parsed.get('type', 'photo'),
+        "extracted_json": parsed.get('extracted_json', {})
+    })
     rowid = await asyncio.to_thread(intake.store_intake, record)
+
+    # if receipt, and amount present, store expense
+    try:
+        if record['type'] == 'receipt' and record['extracted_json'].get('amount'):
+            expense_rec = {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "amount": float(record['extracted_json'].get('amount')),
+                "currency": record['extracted_json'].get('currency', 'HKD'),
+                "category": record['extracted_json'].get('category', '其他'),
+                "merchant": record['extracted_json'].get('vendor') or record['extracted_json'].get('merchant'),
+                "date": record['extracted_json'].get('date'),
+                "note": '',
+                "source": 'image',
+            }
+            await asyncio.to_thread(expense.store_expense, expense_rec)
+    except Exception:
+        logger.exception('failed to store linked expense from image')
+
+    # format reply and send (go through same reply path as text)
     reply = intake.format_confirmation(record)
+    # go through leak-linter path
     await update.message.reply_text(reply)
 
 

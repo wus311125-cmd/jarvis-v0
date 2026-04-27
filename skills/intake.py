@@ -69,7 +69,7 @@ def append_to_daily_intake(record: Dict[str, Any]):
         f.write(entry)
 
 
-def _call_openrouter_model(image_bytes: bytes, model: str, timeout: int = 10) -> Dict[str, Any]:
+def _call_openrouter_model(image_bytes: bytes, model: str, timeout: int = 10, caption: str = "") -> Dict[str, Any]:
     """Call OpenRouter completion with image as base64 + system/user prompt. Return parsed JSON or raise."""
     if not OPENROUTER_API_KEY:
         raise RuntimeError("OPENROUTER_API_KEY not set")
@@ -82,12 +82,16 @@ def _call_openrouter_model(image_bytes: bytes, model: str, timeout: int = 10) ->
         "For screenshot: title, summary. For photo: description. "
         "Date format YYYY-MM-DD. Currency HKD by default. Respond with JSON only."
     )
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": b64}
+    ]
+    if caption:
+        messages.append({"role": "user", "content": f"Caption: {caption}"})
+
     payload = {
         "model": model,
-        "messages": [
-            {"role": "system", "content": prompt},
-            {"role": "user", "content": b64}
-        ],
+        "messages": messages,
         "temperature": 0.0,
     }
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
@@ -96,36 +100,38 @@ def _call_openrouter_model(image_bytes: bytes, model: str, timeout: int = 10) ->
     data = resp.json()
     # openrouter returns choices -> message -> content
     content = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-    # ensure we parse JSON
-    parsed = json.loads(content)
-    return parsed
+    # try parse JSON, fallback will be handled by caller
+    try:
+        parsed = json.loads(content)
+        return parsed
+    except Exception:
+        raise
 
 
-def classify_and_extract(image_bytes: bytes) -> Dict[str, Any]:
+def classify_and_extract(image_bytes: bytes, caption: str = "") -> Dict[str, Any]:
     """Call OpenRouter / vision model to classify and extract fields.
     Returns dict with keys: type (receipt|screenshot|photo), extracted_json
     Uses primary model google/gemini-flash-1.5 with fallback openai/gpt-4o-mini.
     """
     primary = "google/gemini-flash-1.5"
     fallback = "openai/gpt-4o-mini"
-    try:
-        parsed = _call_openrouter_model(image_bytes, primary, timeout=10)
-        return parsed
-    except Exception:
+    # try primary then fallback; if parsing fails, return graceful photo fallback
+    for model in (primary, fallback):
         try:
-            parsed = _call_openrouter_model(image_bytes, fallback, timeout=10)
-            return parsed
-        except Exception as e:
-            # Network or API error: fall back to a safe local heuristic to allow offline dev/tests
-            # Return a minimal, spec-compliant structure so downstream code can proceed.
-            # offline fallback: attempt local classify via registry
-            extracted = {"description": "(offline fallback) 無法呼叫 OpenRouter"}
-            # use classify.get_type for offline heuristics
-            t = classify.get_type(extracted)
-            return {
-                "type": t,
-                "extracted_json": extracted
-            }
+            parsed = _call_openrouter_model(image_bytes, model, timeout=10, caption=caption)
+            # parsed should be a dict; ensure it has type and extracted_json
+            if isinstance(parsed, dict) and parsed.get('type') and parsed.get('extracted_json') is not None:
+                return parsed
+        except Exception:
+            # try next model
+            continue
+
+    # If we reach here, both attempts failed or returned unparsable content
+    logger.warning('vision API failed or returned invalid JSON; falling back to photo')
+    return {
+        "type": "photo",
+        "extracted_json": {"description": "無法辨識"}
+    }
 
 
 def format_confirmation(record: Dict[str, Any]) -> str:
