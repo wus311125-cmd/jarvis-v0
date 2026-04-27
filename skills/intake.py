@@ -20,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 VAULT = Path(os.environ.get("OBSIDIAN_VAULT", "~/ObsidianVault.main")).expanduser()
 DB_PATH = Path(os.environ.get("JARVIS_DB", "~/jarvis-v0/jarvis.db")).expanduser()
 OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
-CONFIDENCE_THRESHOLD = 0.99
+CONFIDENCE_THRESHOLD = 0.7
 
 INTAKE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS intake (
@@ -158,7 +158,7 @@ def classify_and_extract(image_bytes: bytes, caption: str = "") -> Dict[str, Any
     # try primary then fallback; if parsing fails, return graceful photo fallback
     from skills.normalize import normalize_extracted
     # confidence threshold config
-    CONFIDENCE_THRESHOLD = 0.99
+    CONFIDENCE_THRESHOLD = 0.7
 
     for model in (primary, fallback):
         try:
