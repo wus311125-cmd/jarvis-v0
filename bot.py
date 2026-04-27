@@ -68,7 +68,7 @@ def format_image_confirmation(result: dict) -> str:
         pass
     try:
         # Support both new full-context shape and legacy extracted_json shape
-        img_type = result.get("type") or (result.get("extracted_json") or {}).get("type") or "photo"
+        img_type = result.get("type") or (result.get("extracted_json") or {}).get("type") or "unknown"
         # prefer 'extracted' key, fallback to 'extracted_json' or legacy nested structures
         extracted = result.get("extracted")
         if extracted is None:
@@ -348,7 +348,7 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
         try:
             # pass full context to formatter: include type, extracted, summary, confidence
             reply = format_image_confirmation({
-                "type": parsed.get("type", "photo"),
+            "type": parsed.get("type", "unknown"),
                 "extracted": ex,
                 "summary": parsed.get("summary", ""),
                 "confidence": float(confidence or 0.0),
