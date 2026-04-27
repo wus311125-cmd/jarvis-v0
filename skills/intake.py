@@ -82,12 +82,15 @@ def _call_openrouter_model(image_bytes: bytes, model: str, timeout: int = 30, ca
         "For screenshot: title, summary. For photo: description. "
         "Date format YYYY-MM-DD. Currency HKD by default. Respond with JSON only."
     )
-    messages = [
-        {"role": "system", "content": prompt},
-        {"role": "user", "content": b64}
+    user_content = [
+        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
     ]
     if caption:
-        messages.append({"role": "user", "content": f"Caption: {caption}"})
+        user_content.append({"type": "text", "text": f"Caption: {caption}"})
+    messages = [
+        {"role": "system", "content": prompt},
+        {"role": "user", "content": user_content}
+    ]
 
     payload = {
         "model": model,
@@ -127,7 +130,8 @@ def classify_and_extract(image_bytes: bytes, caption: str = "") -> Dict[str, Any
             continue
 
     # If we reach here, both attempts failed or returned unparsable content
-    logger.warning('vision API failed or returned invalid JSON; falling back to photo')
+    import traceback; traceback.print_exc()
+    logger.warning('vision API failed or returned invalid JSON; falling back to photo — error: %s')
     return {
         "type": "photo",
         "extracted_json": {"description": "無法辨識"}
