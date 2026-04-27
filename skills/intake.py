@@ -10,8 +10,12 @@ import asyncio
 import base64
 import requests
 from dotenv import load_dotenv
+import logging
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 
 VAULT = Path(os.environ.get("OBSIDIAN_VAULT", "~/ObsidianVault.main")).expanduser()
 DB_PATH = Path(os.environ.get("JARVIS_DB", "~/jarvis-v0/jarvis.db")).expanduser()
@@ -136,3 +140,91 @@ def format_confirmation(record: Dict[str, Any]) -> str:
     else:
         d = record.get("extracted_json", {})
         return f"已收到相片：{d.get('description','?')}。已儲存。"
+
+
+async def process_text(text: str, source: str = 'telegram') -> dict:
+    """End-to-end processing for text input.
+    - call classify.classify(text)
+    - if expense -> call llm_extract_expense -> store via expense.store_expense
+    - return {ok: bool, message: str, rowid: int|None}
+    """
+    logger.info("process_text: received text: %s", text)
+    # always write intake row first
+    try:
+        intake_rec = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "type": "unknown",
+            "raw_input": text,
+            "extracted_json": {},
+            "source": source,
+        }
+        # write intake row synchronously (small op)
+        _id = store_intake(intake_rec)
+        logger.info("intake row saved id=%s", _id)
+    except Exception:
+        logger.exception("failed to write intake row")
+    # classify (async)
+    try:
+        cls_res = await classify.classify(text)
+    except Exception as e:
+        logger.exception("classify failed")
+        return {"ok": False, "message": f"分類失敗：{e}", "rowid": None}
+
+    logger.info("classification result: %s (conf=%s)", getattr(cls_res, 'type', None), getattr(cls_res, 'confidence', None))
+
+    if cls_res.type in ('expense_text', 'expense'):
+        # extract expense fields
+        try:
+            parsed = await classify.llm_extract_expense(text)
+            logger.info("llm_extract_expense -> %s", parsed)
+        except Exception:
+            logger.exception("llm_extract_expense failed, falling back to regex parse")
+            # fallback to local parser in expense module
+            from importlib import import_module
+            expense_mod = import_module('skills.expense')
+            try:
+                parsed = expense_mod.parse_expense_text(text)
+            except Exception as e:
+                logger.exception("local parse_expense_text failed")
+                return {"ok": False, "message": "解析費用失敗，請用格式：<金額> [貨幣] [分類] [商戶]", "rowid": None}
+
+        # build record
+        rec = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "amount": parsed.get('amount'),
+            "currency": parsed.get('currency', 'HKD'),
+            "category": parsed.get('category'),
+            "merchant": parsed.get('merchant'),
+            "date": parsed.get('date'),
+            "note": parsed.get('description') or parsed.get('note',''),
+            "source": source,
+        }
+
+        # store via expense.store_expense in thread
+        try:
+            from importlib import import_module
+            expense_mod = import_module('skills.expense')
+            rowid = await asyncio.to_thread(expense_mod.store_expense, rec)
+            logger.info("expense stored rowid=%s", rowid)
+            reply = expense_mod.format_expense_confirmation(rec)
+            # update intake row type/extracted_json to reflect expense
+            try:
+                # mark intake with type expense and extracted
+                intake_rec['type'] = 'expense'
+                intake_rec['extracted_json'] = parsed
+                # best-effort: update last intake row (id available as _id)
+                conn = sqlite3.connect(str(DB_PATH))
+                c = conn.cursor()
+                c.execute("UPDATE intake SET type=?, extracted_json=? WHERE id=?", (intake_rec['type'], json.dumps(intake_rec['extracted_json'], ensure_ascii=False), _id))
+                conn.commit()
+                conn.close()
+            except Exception:
+                logger.exception("failed to update intake after expense store")
+            return {"ok": True, "message": reply, "rowid": rowid}
+        except Exception as e:
+            logger.exception("store_expense failed")
+            return {"ok": False, "message": f"儲存費用時出錯：{e}", "rowid": None}
+
+    # not expense
+    logger.info("text not classified as expense: %s", cls_res.type)
+    return {"ok": False, "message": "唔係費用類別（expense）。我只會處理費用記錄。", "rowid": None}

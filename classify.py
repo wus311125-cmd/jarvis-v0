@@ -42,6 +42,16 @@ def _regex_match_text(text: str) -> str | None:
     # Quick numeric fallback: bare numbers like '-85' should be expense_text
     if re.match(r'^-?\d+(?:\.\d+)?(?:\s*(?:HKD|USD|CNY))?$', text.strip()):
         return 'expense_text'
+    # Cantonese / informal expense patterns
+    # examples: '午餐 45 蚊', '買咗 XX 28蚊', '交通 $32'
+    try:
+        if re.search(r"\d+\s*蚊", text) or re.search(r"\$\s*\d+", text) or re.search(r"\b(?:HKD|USD|CNY)\b", text, flags=re.IGNORECASE):
+            return 'expense_text'
+        # consumption verbs / common Cantonese expense words + a number anywhere
+        if re.search(r"\b(?:午餐|晚餐|早餐|買咗|買左|買|搭車|的士|巴士|車費|飲|食|埋單|付錢)\b", text) and re.search(r"\d", text):
+            return 'expense_text'
+    except re.error:
+        pass
     for t in sorted(types, key=lambda x: -x.get('priority', 0)):
         patterns = t.get('patterns') or {}
         pattern = patterns.get('text_regex')

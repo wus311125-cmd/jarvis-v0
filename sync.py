@@ -4,6 +4,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from notion_client import Client
 import sqlite3
+import argparse
+import logging
 
 load_dotenv()
 NOTION_API_KEY = os.environ.get("NOTION_API_KEY")
@@ -11,10 +13,12 @@ if not NOTION_API_KEY:
     raise RuntimeError("NOTION_API_KEY not set")
 
 notion = Client(auth=NOTION_API_KEY)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Data source IDs (from SPEC)
 INTAKE_COLLECTION = "4fd1e5dc-b094-4da8-beab-7c645485429c"
-EXPENSES_COLLECTION = "cb9cf29e-84da-40af-b16a-b338a7ba2189"
+EXPENSES_COLLECTION = "e1ac8a57-b58d-46c4-a6c3-2d7f8d487642"
 
 DB_PATH = Path(os.environ.get("JARVIS_DB", "~/jarvis-v0/jarvis.db")).expanduser()
 
@@ -35,21 +39,26 @@ def _page_exists(database_id: str, local_id: int) -> bool:
         return False
 
 
-def sync_intake():
+def sync_intake(dry_run: bool = False):
     conn = sqlite3.connect(str(DB_PATH))
     cur = conn.cursor()
-    cur.execute("SELECT id, timestamp, type, raw_input, extracted_json, source FROM intake WHERE synced_notion=0")
-    rows = cur.fetchall()
+    try:
+        cur.execute("SELECT id, timestamp, type, raw_input, extracted_json, source FROM intake WHERE synced_notion=0")
+        rows = cur.fetchall()
+    except sqlite3.OperationalError as e:
+        logger.warning("intake table missing or DB not initialized: %s", e)
+        conn.close()
+        return
+    logger.info("Found %d intake rows to consider", len(rows))
     for row in rows:
         id_, timestamp, type_, raw_input, extracted_json, source = row
         try:
             if _page_exists(INTAKE_COLLECTION, id_):
-                print(f"skip intake {id_}: already exists in Notion")
-                cur.execute("UPDATE intake SET synced_notion=1 WHERE id=?", (id_,))
+                logger.info("skip intake %s: already exists in Notion", id_)
+                if not dry_run:
+                    cur.execute("UPDATE intake SET synced_notion=1 WHERE id=?", (id_,))
                 continue
 
-            # prepare properties per SPEC mapping
-            # Summary (title) from extracted.summary if available
             try:
                 extracted = json.loads(extracted_json)
                 summary = extracted.get("summary") or extracted.get("extracted", {}).get("summary") or ""
@@ -65,53 +74,87 @@ def sync_intake():
                 "local_id": {"number": id_},
             }
 
-            notion.pages.create(parent={"database_id": INTAKE_COLLECTION}, properties=props)
-            cur.execute("UPDATE intake SET synced_notion=1 WHERE id=?", (id_,))
+            if dry_run:
+                logger.info("[dry-run] would create intake page: id=%s props=%s", id_, json.dumps(props, ensure_ascii=False))
+            else:
+                notion.pages.create(parent={"database_id": INTAKE_COLLECTION}, properties=props)
+                cur.execute("UPDATE intake SET synced_notion=1 WHERE id=?", (id_,))
         except Exception as e:
-            print(f"failed syncing intake {id_}: {e}")
+            logger.exception("failed syncing intake %s", id_)
             continue
-    conn.commit()
+    if not dry_run:
+        conn.commit()
     conn.close()
 
 
-def sync_expenses():
+def sync_expenses(dry_run: bool = False):
     conn = sqlite3.connect(str(DB_PATH))
     cur = conn.cursor()
-    cur.execute("SELECT id, timestamp, amount, currency, category, merchant, date, note, source FROM expenses WHERE synced_notion=0")
-    rows = cur.fetchall()
+    try:
+        cur.execute("SELECT id, timestamp, amount, currency, category, merchant, date, note, source FROM expenses WHERE synced_notion=0")
+        rows = cur.fetchall()
+    except sqlite3.OperationalError as e:
+        logger.warning("expenses table missing or DB not initialized: %s", e)
+        conn.close()
+        return
+    logger.info("Found %d expense rows to consider", len(rows))
     for row in rows:
         id_, timestamp, amount, currency, category, merchant, date, note, source = row
         try:
             if _page_exists(EXPENSES_COLLECTION, id_):
-                print(f"skip expense {id_}: already exists in Notion")
-                cur.execute("UPDATE expenses SET synced_notion=1 WHERE id=?", (id_,))
+                logger.info("skip expense %s: already exists in Notion", id_)
+                if not dry_run:
+                    cur.execute("UPDATE expenses SET synced_notion=1 WHERE id=?", (id_,))
                 continue
 
-            # validate selects
             currency_val = currency if currency in CURRENCY_OPTIONS else "HKD"
             category_val = category if category in CATEGORY_OPTIONS else "其他"
             source_val = source if source in SOURCE_EXPENSES else "text"
 
+            # Vendor: prefer merchant, fallback to note (original text)
+            vendor_text = merchant or (note if note else "")
+            # Date: prefer explicit date column, else derive from timestamp
+            date_start = None
+            if date:
+                date_start = date
+            else:
+                try:
+                    # timestamp is ISO datetime; take date part
+                    if timestamp:
+                        date_start = str(timestamp).split('T')[0]
+                except Exception:
+                    date_start = None
+
             props = {
-                "Vendor": {"title": [{"text": {"content": merchant or ""}}]},
+                "Vendor": {"title": [{"text": {"content": vendor_text}}]},
                 "Amount": {"number": float(amount) if amount is not None else 0.0},
                 "Currency": {"select": {"name": currency_val}},
                 "Category": {"select": {"name": category_val}},
-                "Date": {"date": {"start": date if date else None}},
                 "Source": {"select": {"name": source_val}},
-                "Note": {"rich_text": [{"text": {"content": note or ""}}]},
                 "local_id": {"number": id_},
             }
+            if date_start:
+                props["Date"] = {"date": {"start": date_start}}
 
-            notion.pages.create(parent={"database_id": EXPENSES_COLLECTION}, properties=props)
-            cur.execute("UPDATE expenses SET synced_notion=1 WHERE id=?", (id_,))
+            if dry_run:
+                logger.info("[dry-run] would create expense page: id=%s props=%s", id_, json.dumps(props, ensure_ascii=False))
+            else:
+                notion.pages.create(parent={"database_id": EXPENSES_COLLECTION}, properties=props)
+                cur.execute("UPDATE expenses SET synced_notion=1 WHERE id=?", (id_,))
         except Exception as e:
-            print(f"failed syncing expense {id_}: {e}")
+            logger.exception("failed syncing expense %s", id_)
             continue
-    conn.commit()
+    if not dry_run:
+        conn.commit()
     conn.close()
 
 
 if __name__ == "__main__":
-    sync_intake()
-    sync_expenses()
+    parser = argparse.ArgumentParser(description='Sync SQLite intake/expenses to Notion')
+    parser.add_argument('--dry-run', action='store_true', help='Only print what would be synced')
+    args = parser.parse_args()
+    dry = args.dry_run
+    logger.info('Starting sync (dry_run=%s)', dry)
+    sync_intake(dry_run=dry)
+    sync_expenses(dry_run=dry)
+    logger.info('Sync complete (dry_run=%s)', dry)

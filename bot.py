@@ -152,59 +152,18 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or "").strip()
     await update.message.reply_chat_action("typing")
     append_to_daily("Hopan", text)
-
-    # match text to type via registry patterns
-    t = classify.match_text_to_type(text)
-    if not t:
-        # friendly fallback
-        await update.message.reply_text("唔好意思，我暫時未識處理呢類訊息。試下傳相或用 'expense 12.5 lunch' 格式。")
+    # Pass text to intake.process_text for E2E handling (classification -> expense store -> reply)
+    try:
+        result = await intake.process_text(text, source='telegram')
+    except Exception as e:
+        # unexpected error
+        await update.message.reply_text(f"處理時發生錯誤：{e}")
         return
 
-    # find registry entry
-    reg = classify.load_registry()
-    entry = next((x for x in reg.get('types', []) if x.get('id') == t), None)
-    if not entry:
-        await update.message.reply_text("Internal: registry mismatch。")
-        return
-
-    handler = entry.get('handler')
-    # dispatch to handler module
-    if handler == 'expense':
-        # treat as expense_text
-        try:
-            parsed = expense.parse_expense_text(text)
-        except Exception:
-            await update.message.reply_text("唔好意思，請用格式：金額 [貨幣] [分類] [商戶] [YYYY-MM-DD] [備註]")
-            return
-        rec = {
-            "timestamp": datetime.datetime.now().isoformat(),
-            "amount": parsed.get('amount'),
-            "currency": parsed.get('currency','HKD'),
-            "category": parsed.get('category'),
-            "merchant": parsed.get('merchant'),
-            "date": parsed.get('date'),
-            "note": parsed.get('note',''),
-            "source": 'text',
-        }
-        rowid = await asyncio.to_thread(expense.store_expense, rec)
-        await update.message.reply_text(expense.format_expense_confirmation(rec))
-        return
-
-    if handler == 'intake':
-        # create a manual intake record from text summary
-        rec = {
-            "timestamp": datetime.datetime.now().isoformat(),
-            "type": entry.get('id') if entry.get('id') in ('receipt','screenshot','photo') else 'photo',
-            "raw_input": text,
-            "extracted_json": {"summary": text},
-            "source": 'manual',
-        }
-        rowid = await asyncio.to_thread(intake.store_intake, rec)
-        await update.message.reply_text(intake.format_confirmation(rec))
-        return
-
-    # other handlers not implemented yet
-    await update.message.reply_text("這種類型已設定但 handler 未實作。")
+    if result.get('ok'):
+        await update.message.reply_text(result.get('message', '已儲存。'))
+    else:
+        await update.message.reply_text(result.get('message', '處理失敗。'))
 
 
 async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
