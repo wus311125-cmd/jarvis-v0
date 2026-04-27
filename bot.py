@@ -225,14 +225,18 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
     await send_reply(update, reply)
 
 
-async def send_reply(update: Update, text: str):
+async def send_reply(update, text: str):
     """Centralized reply — all outbound messages go through leak-linter."""
     try:
-        # linter is available in sys.path inserted earlier
-        cleaned = lint(text)
-    except Exception:
-        cleaned = text
-    await update.message.reply_text(cleaned)
+        from linter import lint
+        result = lint(text)
+        if isinstance(result, dict) and result.get("blocked"):
+            await update.message.reply_text("⚠️ 回覆被安全過濾器攔截。")
+            return
+    except Exception as e:
+        logger.warning("leak-linter error: %s", e)
+    await update.message.reply_text(text)
+
 
 
 async def on_expense(update: Update, _: ContextTypes.DEFAULT_TYPE):
