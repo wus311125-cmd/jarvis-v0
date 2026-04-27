@@ -298,9 +298,24 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
         pass
 
     # confidence-driven flow
+    # prefer top-level confidence, fallback to extracted.confidence or extracted_json.confidence
     ex = parsed.get('extracted_json', {}) if isinstance(parsed, dict) else {}
+    conf = 0.0
     try:
-        conf = float(parsed.get('confidence', 0.0))
+        if isinstance(parsed, dict):
+            conf = parsed.get('confidence', 0)
+            if not conf:
+                # try various nested locations
+                try:
+                    conf = parsed.get('extracted', {}).get('confidence', 0)
+                except Exception:
+                    conf = 0
+            if not conf and isinstance(ex, dict):
+                try:
+                    conf = ex.get('confidence', 0)
+                except Exception:
+                    conf = 0
+        conf = float(conf or 0.0)
     except Exception:
         conf = 0.0
 
