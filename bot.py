@@ -67,22 +67,24 @@ def format_image_confirmation(result: dict) -> str:
     except Exception:
         pass
     try:
-        data = result.get("extracted_json", {})
-        if isinstance(data, str):
-            import json
-            data = json.loads(data)
-        img_type = result.get("type") or (data.get("type") if isinstance(data, dict) else "photo")
-        extracted = {}
-        if isinstance(data, dict):
-            extracted = data.get("extracted", {}) if data.get("extracted") is not None else data
+        # Support both new full-context shape and legacy extracted_json shape
+        img_type = result.get("type") or (result.get("extracted_json") or {}).get("type") or "photo"
+        # prefer 'extracted' key, fallback to 'extracted_json' or legacy nested structures
+        extracted = result.get("extracted")
+        if extracted is None:
+            extracted = result.get("extracted_json") or {}
+            if isinstance(extracted, dict) and "extracted" in extracted:
+                # flatten if someone passed {'extracted': {..., 'extracted': {...}}}
+                nested = extracted.get('extracted')
+                if isinstance(nested, dict):
+                    extracted = nested
         if not isinstance(extracted, dict):
             extracted = {}
-        summary = (data.get("summary") if isinstance(data, dict) else None) or extracted.get("summary", "")
+        summary = result.get("summary") or extracted.get("summary", "")
 
         if img_type == "receipt":
-            merchant = extracted.get("merchant", "") or extracted.get("vendor", "")
+            merchant = extracted.get("merchant", "")
             amount = extracted.get("amount", 0)
-            currency = extracted.get("currency", "HKD")
             if merchant and amount:
                 return f"🧾 收到！{merchant} ${amount}，我記低咗。"
             elif amount:
@@ -91,14 +93,10 @@ def format_image_confirmation(result: dict) -> str:
                 return "🧾 好似係張單，但我睇唔到金額。你可以話我知幾錢？"
 
         elif img_type == "screenshot":
-            if summary:
-                return f"📱 Screenshot 收到：{summary}"
-            return "📱 Screenshot 收到，我記低咗。"
+            return f"📱 Screenshot 收到：{summary}" if summary else "📱 Screenshot 收到，我記低咗。"
 
         elif img_type == "photo":
-            if summary:
-                return f"📸 靚相！{summary}"
-            return "📸 收到張相，我記低咗。"
+            return f"📸 靚相！{summary}" if summary else "📸 收到張相，我記低咗。"
 
         else:
             return "🤔 我睇唔太清呢張，你可以話我知係咩？"
@@ -348,7 +346,13 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
             logger.exception('failed to store linked expense from image')
         # reply
         try:
-            reply = format_image_confirmation({"extracted_json": ex})
+            # pass full context to formatter: include type, extracted, summary, confidence
+            reply = format_image_confirmation({
+                "type": parsed.get("type", "photo"),
+                "extracted": ex,
+                "summary": parsed.get("summary", ""),
+                "confidence": float(confidence or 0.0),
+            })
         except Exception:
             reply = "🤔 我睇唔太清呢張，你可以話我知係咩？"
         await send_reply(update, reply)
