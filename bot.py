@@ -238,8 +238,9 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
         pass
 
     # store intake row
+    # Use 'unknown' as default type when model fails to produce a canonical type
     record.update({
-        "type": parsed.get('type', 'photo'),
+        "type": parsed.get('type', 'unknown'),
         "extracted_json": parsed.get('extracted_json', {})
     })
     rowid = await asyncio.to_thread(intake.store_intake, record)
