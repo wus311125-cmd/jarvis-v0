@@ -111,10 +111,10 @@ def _call_openrouter_model(image_bytes: bytes, model: str, timeout: int = 30, ca
 def classify_and_extract(image_bytes: bytes, caption: str = "") -> Dict[str, Any]:
     """Call OpenRouter / vision model to classify and extract fields.
     Returns dict with keys: type (receipt|screenshot|photo), extracted_json
-    Uses primary model google/gemini-flash-1.5 with fallback openai/gpt-4o-mini.
+    Uses primary model meta-llama/llama-4-scout with fallback meta-llama/llama-4-scout.
     """
-    primary = "google/gemini-flash-1.5"
-    fallback = "openai/gpt-4o-mini"
+    primary = "meta-llama/llama-4-scout"
+    fallback = "meta-llama/llama-4-scout"
     # try primary then fallback; if parsing fails, return graceful photo fallback
     for model in (primary, fallback):
         try:
