@@ -17,8 +17,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Data source IDs (from SPEC)
-INTAKE_COLLECTION = "4fd1e5dc-b094-4da8-beab-7c645485429c"
-EXPENSES_COLLECTION = "e1ac8a57-b58d-46c4-a6c3-2d7f8d487642"
+# Prefer env overrides so DB IDs aren't hardcoded in runtime if provided
+INTAKE_COLLECTION = os.environ.get("JARVIS_INTAKE_DB_ID", "4fd1e5dc-b094-4da8-beab-7c645485429c")
+EXPENSES_COLLECTION = os.environ.get("JARVIS_EXPENSES_DB_ID", "e1ac8a57-b58d-46c4-a6c3-2d7f8d487642")
 
 DB_PATH = Path(os.environ.get("JARVIS_DB", "~/jarvis-v0/jarvis.db")).expanduser()
 
@@ -60,16 +61,29 @@ def sync_intake(dry_run: bool = False):
                 continue
 
             try:
-                extracted = json.loads(extracted_json)
-                summary = extracted.get("summary") or extracted.get("extracted", {}).get("summary") or ""
+                extracted = json.loads(extracted_json or "{}")
             except Exception:
-                summary = str(extracted_json)[:200]
+                extracted = {}
+
+            # Title mapping per intake.type
+            t = type_ if type_ in TYPE_OPTIONS else "photo"
+            title = None
+            if t == "receipt":
+                vendor = extracted.get("vendor") or extracted.get("merchant") or "Receipt"
+                amount = extracted.get("amount") if extracted.get("amount") is not None else "?"
+                title = f"🧾 {vendor} ${amount}"
+            elif t == "screenshot":
+                title = f"📸 {extracted.get('summary') or extracted.get('title') or ''}".strip()
+            elif t == "photo":
+                title = f"🖼️ {extracted.get('description') or ''}".strip()
+            if not title:
+                title = f"Intake #{id_}"
 
             props = {
-                "Summary": {"title": [{"text": {"content": summary}}]},
-                "Type": {"select": {"name": type_ if type_ in TYPE_OPTIONS else "photo"}},
+                "Summary": {"title": [{"text": {"content": title}}]},
+                "Type": {"select": {"name": t}},
                 "Date": {"date": {"start": timestamp.split("T")[0] if timestamp else None}},
-                "Extracted": {"rich_text": [{"text": {"content": str(extracted_json)}}]},
+                "Extracted": {"rich_text": [{"text": {"content": (json.dumps(extracted, ensure_ascii=False) if extracted else str(extracted_json))[:2000]}}]},
                 "Source": {"select": {"name": source if source in SOURCE_INTAKE else "telegram"}},
                 "local_id": {"number": id_},
             }
