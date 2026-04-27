@@ -300,24 +300,18 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
     # confidence-driven flow
     # prefer top-level confidence, fallback to extracted.confidence or extracted_json.confidence
     ex = parsed.get('extracted_json', {}) if isinstance(parsed, dict) else {}
-    conf = 0.0
+    # simplified confidence extraction: top-level parsed -> parsed.extracted -> extracted_json
     try:
+        confidence = 0
         if isinstance(parsed, dict):
-            conf = parsed.get('confidence', 0)
-            if not conf:
-                # try various nested locations
-                try:
-                    conf = parsed.get('extracted', {}).get('confidence', 0)
-                except Exception:
-                    conf = 0
-            if not conf and isinstance(ex, dict):
-                try:
-                    conf = ex.get('confidence', 0)
-                except Exception:
-                    conf = 0
-        conf = float(conf or 0.0)
+            confidence = parsed.get("confidence") or (parsed.get("extracted") or {}).get("confidence") or (ex or {}).get("confidence") or 0
+            try:
+                confidence = float(confidence)
+            except Exception:
+                confidence = 0
     except Exception:
-        conf = 0.0
+        confidence = 0
+    conf = float(confidence or 0.0)
 
     if conf >= intake.CONFIDENCE_THRESHOLD:
         # auto-confirmed
@@ -444,8 +438,8 @@ async def on_expense(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
 
 FEEDBACK_MAP = {
-    "1": "receipt", "收據": "receipt", "單": "receipt",
-    "2": "screenshot", "截圖": "screenshot",
+    "1": "receipt", "收據": "receipt", "單": "receipt", "收据": "receipt",
+    "2": "screenshot", "截圖": "screenshot", "截图": "screenshot",
     "3": "photo", "相片": "photo", "相": "photo",
 }
 
