@@ -69,7 +69,7 @@ def append_to_daily_intake(record: Dict[str, Any]):
         f.write(entry)
 
 
-def _call_openrouter_model(image_bytes: bytes, model: str, timeout: int = 10, caption: str = "") -> Dict[str, Any]:
+def _call_openrouter_model(image_bytes: bytes, model: str, timeout: int = 30, caption: str = "") -> Dict[str, Any]:
     """Call OpenRouter completion with image as base64 + system/user prompt. Return parsed JSON or raise."""
     if not OPENROUTER_API_KEY:
         raise RuntimeError("OPENROUTER_API_KEY not set")
@@ -118,7 +118,7 @@ def classify_and_extract(image_bytes: bytes, caption: str = "") -> Dict[str, Any
     # try primary then fallback; if parsing fails, return graceful photo fallback
     for model in (primary, fallback):
         try:
-            parsed = _call_openrouter_model(image_bytes, model, timeout=10, caption=caption)
+            parsed = _call_openrouter_model(image_bytes, model, timeout=30, caption=caption)
             # parsed should be a dict; ensure it has type and extracted_json
             if isinstance(parsed, dict) and parsed.get('type') and parsed.get('extracted_json') is not None:
                 return parsed

@@ -161,9 +161,9 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
         return
 
     if result.get('ok'):
-        await update.message.reply_text(result.get('message', '已儲存。'))
+        await send_reply(update, result.get('message', '已儲存。'))
     else:
-        await update.message.reply_text(result.get('message', '處理失敗。'))
+        await send_reply(update, result.get('message', '處理失敗。'))
 
 
 async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
@@ -221,8 +221,18 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
     # format reply and send (go through same reply path as text)
     reply = intake.format_confirmation(record)
-    # go through leak-linter path
-    await update.message.reply_text(reply)
+    # centralized send via leak-linter
+    await send_reply(update, reply)
+
+
+async def send_reply(update: Update, text: str):
+    """Centralized reply — all outbound messages go through leak-linter."""
+    try:
+        # linter is available in sys.path inserted earlier
+        cleaned = lint(text)
+    except Exception:
+        cleaned = text
+    await update.message.reply_text(cleaned)
 
 
 async def on_expense(update: Update, _: ContextTypes.DEFAULT_TYPE):
