@@ -9,6 +9,10 @@ from telegram.ext import (
 
 load_dotenv()
 
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
+
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 ALLOWED = int(os.environ["ALLOWED_USER_ID"])
 VAULT = Path(os.environ["OBSIDIAN_VAULT"])
@@ -177,6 +181,7 @@ sys.path.insert(0, os.path.expanduser('~/oh-my-opencode/skills/leak-linter'))
 from linter import lint
 # import skills
 from skills import intake, expense
+import sqlite3
 import classify
 import json, hashlib
 from datetime import timedelta
@@ -433,15 +438,19 @@ async def handle_feedback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> bool:
     Returns True if message consumed as feedback.
     """
     text = (update.message.text or "").strip()
+    logger.info("handle_feedback invoked with text=%s from user=%s", text, getattr(update.effective_user, 'id', None))
     if text not in FEEDBACK_MAP:
+        logger.info("handle_feedback: not a feedback message: %s", text)
         return False
     new_type = FEEDBACK_MAP[text]
-    conn = sqlite3.connect(str(DB_PATH))
+    # use intake.DB_PATH to reference db path
+    conn = sqlite3.connect(str(intake.DB_PATH))
     cur = conn.cursor()
     cur.execute(
         "SELECT id, extracted_json FROM intake WHERE needs_confirmation=1 ORDER BY id DESC LIMIT 1"
     )
     row = cur.fetchone()
+    logger.info("handle_feedback: pending row fetched=%s", row)
     if not row:
         conn.close()
         return False
@@ -452,9 +461,10 @@ async def handle_feedback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> bool:
         data = {}
     data["type"] = new_type
     cur.execute(
-        "UPDATE intake SET type=?, extracted_json=?, needs_confirmation=0 WHERE id= ?",
+        "UPDATE intake SET type=?, extracted_json=?, needs_confirmation=0 WHERE id=?",
         (new_type, json.dumps(data, ensure_ascii=False), row_id),
     )
+    logger.info("handle_feedback: updated intake id=%s to type=%s", row_id, new_type)
     conn.commit()
 
     # If receipt → create expense
