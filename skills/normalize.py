@@ -109,7 +109,7 @@ def normalize_extracted(data: dict) -> dict:
     """
     # preserve top-level keys unchanged; only clean inside `extracted` if present
     if not isinstance(data, dict):
-        return {}
+        return data
 
     result = dict(data)  # shallow copy
 
@@ -118,7 +118,7 @@ def normalize_extracted(data: dict) -> dict:
     if isinstance(ext, dict):
         if "amount" in ext:
             cleaned = clean_amount(ext.get("amount"))
-            ext["amount"] = cleaned if cleaned is not None else None
+            ext["amount"] = cleaned if cleaned is not None else 0
 
         if "currency" in ext:
             ext["currency"] = clean_currency(ext.get("currency"))
@@ -127,7 +127,7 @@ def normalize_extracted(data: dict) -> dict:
 
         if "date" in ext:
             ext_date = clean_date(ext.get("date"))
-            ext["date"] = ext_date if ext_date is not None else None
+            ext["date"] = ext_date if ext_date is not None else ""
 
         if "merchant" in ext:
             ext["merchant"] = clean_merchant(ext.get("merchant"))
@@ -138,7 +138,7 @@ def normalize_extracted(data: dict) -> dict:
         # flat-shape fallback: if top-level has amount/currency keys, clean them but do not wrap
         if "amount" in result and "extracted" not in data:
             cleaned = clean_amount(result.get("amount"))
-            result["amount"] = cleaned if cleaned is not None else None
+            result["amount"] = cleaned if cleaned is not None else 0
         if "currency" in result and "extracted" not in data:
             result["currency"] = clean_currency(result.get("currency"))
 
