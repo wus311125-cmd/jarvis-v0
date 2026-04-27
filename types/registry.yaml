@@ -3,15 +3,15 @@
 types:
   - id: receipt
     name: 收據
-    priority: 100
+    priority: 10
     handler: intake
   - id: screenshot
     name: 截圖
-    priority: 80
+    priority: 50
     handler: intake
   - id: photo
     name: 相片
-    priority: 50
+    priority: 99
     handler: intake
     examples:
       - "一張海邊風景相"
@@ -19,7 +19,7 @@ types:
       - "公司活動大合照"
   - id: expense_text
     name: 費用（文字）
-    priority: 90
+    priority: 20
     handler: expense
     patterns:
       text_regex: '^(?:expense\\b|費用\\b)|^-?\\d+(?:\\.\\d+)?(?:\\s*(?:HKD|USD|CNY))?$'
@@ -31,6 +31,11 @@ types:
     name: 費用（相片）
     priority: 60
     handler: expense
+
+  - id: unknown
+    name: 未知
+    priority: 999
+    handler: intake
 
 _llm_config:
   model: "openai/gpt-4.1-nano"
