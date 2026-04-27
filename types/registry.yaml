@@ -23,7 +23,7 @@ types:
     handler: expense
     patterns:
       # Match: -45  or -45 Vendor  or -45 Vendor Category  or decimals and English vendors
-      text_regex: '^\\-\\d+(?:\\.\\d+)?(?:\\s+.+)?$'
+      text_regex: '^-\d+(?:\.\d+)?(?:\s+.+)?$'
     examples:
       - "12.5 lunch McCafe"
       - "-85 食飯"
