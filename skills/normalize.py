@@ -107,32 +107,40 @@ def normalize_extracted(data: dict) -> dict:
 
     Handles both shapes: {"extracted": {...}} or a flat dict.
     """
-    result = dict(data) if isinstance(data, dict) else {}
-    # handle nested or flat
-    ext = dict(result.get("extracted", result))
+    # preserve top-level keys unchanged; only clean inside `extracted` if present
+    if not isinstance(data, dict):
+        return {}
 
-    if "amount" in ext:
-        cleaned = clean_amount(ext.get("amount"))
-        ext["amount"] = cleaned if cleaned is not None else None
+    result = dict(data)  # shallow copy
 
-    if "currency" in ext:
-        ext["currency"] = clean_currency(ext.get("currency"))
-    else:
-        # ensure currency default exists
-        ext["currency"] = clean_currency(ext.get("currency"))
+    # If there is a nested extracted dict, clean its fields in-place
+    ext = result.get("extracted")
+    if isinstance(ext, dict):
+        if "amount" in ext:
+            cleaned = clean_amount(ext.get("amount"))
+            ext["amount"] = cleaned if cleaned is not None else None
 
-    if "date" in ext:
-        ext_date = clean_date(ext.get("date"))
-        ext["date"] = ext_date if ext_date is not None else None
+        if "currency" in ext:
+            ext["currency"] = clean_currency(ext.get("currency"))
+        else:
+            ext["currency"] = clean_currency(ext.get("currency"))
 
-    if "merchant" in ext:
-        ext["merchant"] = clean_merchant(ext.get("merchant"))
+        if "date" in ext:
+            ext_date = clean_date(ext.get("date"))
+            ext["date"] = ext_date if ext_date is not None else None
 
-    if "extracted" in result:
+        if "merchant" in ext:
+            ext["merchant"] = clean_merchant(ext.get("merchant"))
+
         result["extracted"] = ext
+
     else:
-        # return as nested for consistency
-        result = {"extracted": ext}
+        # flat-shape fallback: if top-level has amount/currency keys, clean them but do not wrap
+        if "amount" in result and "extracted" not in data:
+            cleaned = clean_amount(result.get("amount"))
+            result["amount"] = cleaned if cleaned is not None else None
+        if "currency" in result and "extracted" not in data:
+            result["currency"] = clean_currency(result.get("currency"))
 
     return result
 
