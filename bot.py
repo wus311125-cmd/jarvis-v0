@@ -513,7 +513,7 @@ async def handle_feedback(update: Update, _: ContextTypes.DEFAULT_TYPE) -> bool:
     return True
 
 
-def main():
+def build_application():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
@@ -523,9 +523,34 @@ def main():
     app.add_handler(MessageHandler(filters.PHOTO, on_photo))
     # generic text handler (registry-driven)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text))
+    return app
+
+
+async def main_async():
+    app = build_application()
     session_n = ensure_session_header()
     print(f"\U0001F431 緣一 Jarvis v0.1 running... (Session {session_n})")
-    app.run_polling(allowed_updates=Update.ALL_TYPES)
+    # await run_polling to ensure asyncio loop is properly used
+    await app.run_polling(allowed_updates=Update.ALL_TYPES)
+
 
 if __name__ == "__main__":
-    main()
+    import asyncio, threading
+    # Ensure there is an event loop set for this thread (fixes nohup/background cases)
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+
+    # If an event loop is already running (e.g. interactive), schedule and block.
+    if loop.is_running():
+        loop.create_task(main_async())
+        threading.Event().wait()
+    else:
+        # Run in main thread synchronously via Application.run_polling which
+        # expects to be called from the main thread and will manage the loop.
+        app = build_application()
+        session_n = ensure_session_header()
+        print(f"\U0001F431 緣一 Jarvis v0.1 running... (Session {session_n})")
+        app.run_polling(allowed_updates=Update.ALL_TYPES)
