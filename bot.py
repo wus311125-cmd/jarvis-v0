@@ -289,7 +289,7 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
             logger.info('[ROUTE] low-confidence chat branch')
             try:
                 from jarvis.chat import chat_reply
-                reply = await chat_reply(text)
+                reply = chat_reply(text)
                 await send_reply(update, reply)
                 return
             except Exception:
@@ -302,7 +302,7 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
             logger.info('[ROUTE] explicit chat dispatch')
             try:
                 from jarvis.chat import chat_reply
-                reply = await chat_reply(text)
+                reply = chat_reply(text)
                 await send_reply(update, reply)
                 return
             except Exception:
