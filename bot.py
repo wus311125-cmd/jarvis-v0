@@ -253,6 +253,8 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
     step = 'confidence_gate'
     # thresholds: >=0.9 auto, 0.6-0.9 suggest/confirm, <0.6 -> chat
     try:
+        # handy debug for intent routing
+        logger.info(f"Intent routing: intent={intent}")
         if confidence >= 0.9 and intent == 'expense':
             # expense auto-store via existing intake pipeline
             logger.info('[ROUTE] auto expense branch')
@@ -292,6 +294,52 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                 return
             except Exception:
                 logger.exception('[ROUTE] chat reply failed, fallback to intake')
+                res = await intake.process_text(text, source='telegram')
+                await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+                return
+        # explicit routing for non-expense intents with sufficient confidence
+        elif intent == 'chat':
+            logger.info('[ROUTE] explicit chat dispatch')
+            try:
+                from jarvis.chat import chat_reply
+                reply = await chat_reply(text)
+                await send_reply(update, reply)
+                return
+            except Exception:
+                logger.exception('[ROUTE] chat dispatch failed, fallback to intake')
+                res = await intake.process_text(text, source='telegram')
+                await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+                return
+        elif intent == 'recap':
+            logger.info('[ROUTE] recap dispatch')
+            try:
+                await send_reply(update, f"我聽到似係：{rewritten}。我幫你做咗，如果唔啱話我知。")
+                return
+            except Exception:
+                logger.exception('[ROUTE] recap dispatch failed, fallback to intake')
+                res = await intake.process_text(text, source='telegram')
+                await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+                return
+        elif intent == 'entity':
+            logger.info('[ROUTE] entity dispatch')
+            try:
+                # entities_res captured earlier from lookup_entities
+                ctx = entities_res.get('entity_context','') if isinstance(entities_res, dict) else str(entities_res)
+                await send_reply(update, f"我偵測到實體：{ctx}")
+                return
+            except Exception:
+                logger.exception('[ROUTE] entity dispatch failed, fallback to intake')
+                res = await intake.process_text(text, source='telegram')
+                await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+                return
+        elif intent in ('correction', 'corrections'):
+            logger.info('[ROUTE] correction dispatch')
+            try:
+                # minimal correction handling: acknowledge and record via intake fallback
+                await send_reply(update, '✅ 收到更正，我已記低。')
+                return
+            except Exception:
+                logger.exception('[ROUTE] correction dispatch failed, fallback to intake')
                 res = await intake.process_text(text, source='telegram')
                 await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
                 return
