@@ -225,6 +225,13 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
         # if no message id available, continue
         pass
     text = (update.message.text or "").strip()
+    # Conversation memory: add user message to per-user buffer
+    try:
+        from memory import memory
+        user_id = str(update.effective_user.id)
+        memory.add_user_message(user_id, text)
+    except Exception:
+        logger.exception('failed to append to memory')
     await update.message.reply_chat_action("typing")
     append_to_daily("Hopan", text)
     # Pass text to intake.process_text for E2E handling (classification -> expense store -> reply)
@@ -368,7 +375,14 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
     step = 'route'
     try:
         recent_ctx = _load_recent_history(10)
-        route_res = router_route(rewritten, entities_res.get('entity_context',''), recent_ctx)
+        # include conversation memory as history for model context
+        try:
+            from memory import memory as conv_memory
+            user_id = str(update.effective_user.id)
+            history_msgs = conv_memory.get_messages(user_id)
+        except Exception:
+            history_msgs = []
+        route_res = router_route(rewritten, entities_res.get('entity_context',''), recent_ctx, history=history_msgs)
     except Exception:
         logger.exception('[ROUTE] router_route failed, fallback to intake')
         route_res = {'tool': None, 'args': None, 'assistant': None}

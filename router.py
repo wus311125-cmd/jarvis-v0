@@ -241,7 +241,7 @@ def _build_system_prompt(recent: List[str]) -> str:
     return system
 
 
-def route(text: str, entity_context: str = '', recent: List[str] = None) -> Dict[str, Any]:
+def route(text: str, entity_context: str = '', recent: List[str] = None, history: List[Dict[str,str]] = None) -> Dict[str, Any]:
     """Send user text to OpenRouter with function definitions.
     Returns: { 'tool': name | None, 'args': dict | None, 'assistant': str | None }
     If OPENROUTER_API_KEY is not set, use lightweight local heuristics as fallback to enable offline testing.
@@ -251,8 +251,15 @@ def route(text: str, entity_context: str = '', recent: List[str] = None) -> Dict
     system = _build_system_prompt(recent)
     messages = [
         {"role": "system", "content": system},
-        {"role": "user", "content": text}
     ]
+    # inject conversational memory (history) if provided. Expect history as list of {'role','content'}
+    if history and isinstance(history, list):
+        for m in history:
+            # validate minimal shape
+            if isinstance(m, dict) and m.get('role') and m.get('content'):
+                messages.append({'role': m.get('role'), 'content': m.get('content')})
+    # finally append current user message
+    messages.append({"role": "user", "content": text})
 
     # Local heuristic fallback when no API key (allows offline E2E smoke tests)
     if OPENROUTER_API_KEY is None:
