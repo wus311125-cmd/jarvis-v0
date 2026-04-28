@@ -383,7 +383,7 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
         if summary:
             # classify.classify was removed; use classify_intent which returns (intent, confidence)
             try:
-                intent, conf = classify.classify_intent(summary)
+                intent, conf = classify_intent(summary)
                 # map intent to parsed['type'] when meaningful
                 if intent == 'expense':
                     parsed['type'] = 'receipt'
