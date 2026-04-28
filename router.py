@@ -1,5 +1,6 @@
 import os
 import json
+import ast
 import requests
 import sqlite3
 import re
@@ -286,6 +287,9 @@ def _build_system_prompt(recent: List[str], entity_context: str = '') -> str:
         pass
     # self-learning rules: when user corrects you, record lesson and execute corrected intent
     system = system + "\n\n【自我學習規則】\n- 當用戶以「唔係」「錯咗」「我係想」「唔啱」等字眼糾正你嘅理解，請呼叫 learn_from_correction 工具記低教訓，並同時執行正確嘅工具。\n- 你可以在一次回應中同時呼叫多個 tools（例如 learn_from_correction 然後 find_student）。\n- 回覆格式：簡短確認學到嘅教訓，然後提供正確結果。例如：\n  「明白，已記住：冇日期時間 = 查詢。sophia 下次上堂：2026-05-06 16:00」\n"
+
+    # Strong response-format enforcement to encourage reliable function-calling
+    system = system + "\n\n【回應格式要求】\n- 如果你決定使用任何 tool，回應必須同時包含一個 'tool_calls' 陣列，陣列每項形如：\n  {\n    \"function\": {\n      \"name\": \"<tool_name>\",\n      \"arguments\": \"<JSON-string-of-arguments>\"\n    }\n  }\n  例如：\n  {\n    \"tool_calls\": [\n      {\"function\": {\"name\": \"find_student\", \"arguments\": \"{\\\"student_name\\\": \\\"sophia\\\"}\"}}\n    ]\n  }\n- arguments 欄位請務必用嚴格 JSON 字串（double quotes），例如 '{\"student_name\": \"sophia\"}'。\n- 若唔需要用 tool，純以 assistant 文字回應即可（廣東話）。\n- 請避免在回應中混雜非結構化工具呼叫描述；要麼給結構化 tool_calls，要麼給 assistant 文字回應。\n"
     return system
 
 
@@ -362,9 +366,9 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
                 try:
                     tool_args = json.loads(tool_args_raw)
                 except Exception:
-                    # attempt lenient parse (single quotes) then fallback to empty
+                    # attempt lenient parse using ast.literal_eval for safety
                     try:
-                        tool_args = eval(tool_args_raw)
+                        tool_args = ast.literal_eval(tool_args_raw)
                     except Exception:
                         tool_args = {}
                 parsed_calls.append({'tool': tool_name, 'args': tool_args})
@@ -382,13 +386,88 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
             args = json.loads(args_raw)
         except Exception:
             try:
-                args = eval(args_raw)
+                args = ast.literal_eval(args_raw)
             except Exception:
                 args = {}
         return {'tool': name, 'args': args, 'assistant': None}
 
     # else assistant content
     assistant_text = msg.get('content')
+
+    # Fallback parser: sometimes the model writes tool_calls JSON into assistant text.
+    # Use a robust balanced-brace extractor anchored at the '"tool_calls"' token to
+    # tolerate surrounding text or newlines.
+    if assistant_text and isinstance(assistant_text, str):
+        try:
+            idx = assistant_text.find('"tool_calls"')
+            if idx != -1:
+                # find opening brace before idx
+                open_pos = assistant_text.rfind('{', 0, idx)
+                if open_pos != -1:
+                    # scan forward from open_pos to find matching closing brace, ignoring string contents
+                    s = assistant_text
+                    i = open_pos
+                    brace_count = 0
+                    in_str = False
+                    escape = False
+                    end_pos = None
+                    while i < len(s):
+                        ch = s[i]
+                        if in_str:
+                            if escape:
+                                escape = False
+                            elif ch == '\\':
+                                escape = True
+                            elif ch == '"':
+                                in_str = False
+                        else:
+                            if ch == '"':
+                                in_str = True
+                            elif ch == '{':
+                                brace_count += 1
+                            elif ch == '}':
+                                brace_count -= 1
+                                if brace_count == 0:
+                                    end_pos = i
+                                    break
+                        i += 1
+                    if end_pos:
+                        raw = assistant_text[open_pos:end_pos+1]
+                        parsed = None
+                        try:
+                            parsed = json.loads(raw)
+                        except Exception:
+                            try:
+                                parsed = ast.literal_eval(raw)
+                            except Exception:
+                                parsed = None
+                        if parsed and isinstance(parsed, dict) and parsed.get('tool_calls'):
+                            tcalls = parsed['tool_calls']
+                            parsed_calls = []
+                            for tc in tcalls:
+                                func = tc.get('function') or tc.get('function_call') or tc.get('tool')
+                                if not func or not isinstance(func, dict):
+                                    continue
+                                tool_name = func.get('name')
+                                tool_args_raw = func.get('arguments') or func.get('args') or '{}'
+                                tool_args = {}
+                                if isinstance(tool_args_raw, str):
+                                    try:
+                                        tool_args = json.loads(tool_args_raw)
+                                    except Exception:
+                                        try:
+                                            tool_args = ast.literal_eval(tool_args_raw)
+                                        except Exception:
+                                            tool_args = {}
+                                elif isinstance(tool_args_raw, dict):
+                                    tool_args = tool_args_raw
+                                parsed_calls.append({'tool': tool_name, 'args': tool_args})
+                            if parsed_calls:
+                                return {'tool_calls': parsed_calls, 'assistant': None}
+        except Exception:
+            # non-fatal; fall back to returning assistant text
+            pass
+
     return {'tool': None, 'args': None, 'assistant': assistant_text}
 
 

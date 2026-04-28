@@ -1,5 +1,13 @@
-import json, os
+import json, os, tempfile
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
+if not logger.handlers:
+    h = logging.StreamHandler()
+    h.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
+    logger.addHandler(h)
+    logger.setLevel(logging.INFO)
 
 FEW_SHOTS_PATH = os.path.join(os.path.dirname(__file__), 'few_shots.json')
 
@@ -33,8 +41,21 @@ def learn_from_correction(original_input: str, correct_tool: str, lesson: str, w
     if not updated:
         shots.append(new_entry)
 
-    # write back
-    with open(FEW_SHOTS_PATH, 'w', encoding='utf-8') as f:
-        json.dump(shots, f, ensure_ascii=False, indent=2)
+    # write back atomically to avoid partial writes/races
+    try:
+        dirpath = os.path.dirname(FEW_SHOTS_PATH)
+        fd, tmp_path = tempfile.mkstemp(dir=dirpath, prefix='few_shots_', suffix='.json')
+        with os.fdopen(fd, 'w', encoding='utf-8') as f:
+            json.dump(shots, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, FEW_SHOTS_PATH)
+    except Exception as e:
+        logger.exception('failed to write few_shots.json: %s', e)
+        # fallback non-atomic write
+        with open(FEW_SHOTS_PATH, 'w', encoding='utf-8') as f:
+            json.dump(shots, f, ensure_ascii=False, indent=2)
 
-    return { 'ok': True, 'message': f'已學識：「{original_input}」→ {correct_tool}（{lesson}）' }
+    msg = f'已學識：「{original_input}」→ {correct_tool}（{lesson}）'
+    logger.info('learn_from_correction: %s', msg)
+    return { 'ok': True, 'message': msg }
