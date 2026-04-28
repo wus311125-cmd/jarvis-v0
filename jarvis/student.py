@@ -228,9 +228,44 @@ def schedule_next(name, date_str, time_str=None):
                 '狀態': {'select': {'name':'未開始'}}
             }
         }
-        if time_str:
-            props['properties']['備註'] = {'rich_text':[{'text':{'content': time_str}}]}
-        _req('POST', create_url, json=props)
+        # Note: inline lesson DB schema does not include 備註 property.
+        # We will append time_str as a child block to the created page instead.
+
+        # Debug: print request body
+        try:
+            print('DEBUG: Notion create page payload:')
+            print(json.dumps(props, ensure_ascii=False, indent=2))
+        except Exception:
+            pass
+
+        # Send request and print response for debugging 400 errors
+        try:
+            resp = requests.post(create_url, headers=HEADERS, json=props, timeout=15)
+            try:
+                print('DEBUG: Notion response status:', resp.status_code)
+                print('DEBUG: Notion response text:', resp.text)
+            except Exception:
+                pass
+            if resp.status_code >= 400:
+                return f'操作失敗: {resp.status_code} {resp.text}'
+            # parse json
+            created_page = resp.json()
+            created_id = created_page.get('id')
+            # if time_str provided, append as child paragraph block to the created page
+            if time_str and created_id:
+                try:
+                    block_url = f'https://api.notion.com/v1/blocks/{created_id}/children'
+                    block_body = {'children': [{'object': 'block', 'type': 'paragraph', 'paragraph': {'rich_text':[{'type':'text','text':{'content': time_str}}]}}]}
+                    bresp = requests.patch(block_url, headers=HEADERS, json=block_body, timeout=15)
+                    try:
+                        print('DEBUG: append block status', bresp.status_code)
+                        print('DEBUG: append block text', bresp.text)
+                    except Exception:
+                        pass
+                except Exception:
+                    pass
+        except Exception as e:
+            return f'操作失敗: {e}'
         # update outer student page 已約 = true
         up_url = f'https://api.notion.com/v1/pages/{page_id}'
         _req('PATCH', up_url, json={'properties': {'已約': {'checkbox': True}}})

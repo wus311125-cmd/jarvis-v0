@@ -13,78 +13,96 @@ MODEL = os.environ.get('OPENROUTER_MODEL', 'gpt-5-mini')
 
 TOOLS = [
     {
-        "name": "log_expense",
-        "description": "記錄一筆支出：當用戶講到買嘢、食飯、花費。常見格式：-金額 描述，例如「-88 大快活」",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "amount": {"type": "number", "description": "金額（正數）"},
-                "description": {"type": "string", "description": "消費描述"},
-                "vendor": {"type": "string", "description": "商戶名稱（如有）"},
-                "category": {"type": "string", "description": "分類（food/transport/shopping/other）"}
-            },
-            "required": ["amount", "description"]
+        "type": "function",
+        "function": {
+            "name": "log_expense",
+            "description": "記錄一筆支出：當用戶講到買嘢、食飯、花費。常見格式：-金額 描述，例如「-88 大快活」",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "amount": {"type": "number", "description": "金額（正數）"},
+                    "description": {"type": "string", "description": "消費描述"},
+                    "vendor": {"type": "string", "description": "商戶名稱（如有）"},
+                    "category": {"type": "string", "description": "分類（food/transport/shopping/other）"}
+                },
+                "required": ["amount", "description"]
+            }
         }
     },
     {
-        "name": "log_income",
-        "description": "記錄一筆收入：當用戶講到收款、學費、人工等。常見格式：+金額 描述，例如「+3000 學費」",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "amount": {"type": "number", "description": "金額（正數）"},
-                "description": {"type": "string", "description": "收入描述"},
-                "source": {"type": "string", "description": "收入來源"}
-            },
-            "required": ["amount", "description"]
+        "type": "function",
+        "function": {
+            "name": "log_income",
+            "description": "記錄一筆收入：當用戶講到收款、學費、人工等。常見格式：+金額 描述，例如「+3000 學費」",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "amount": {"type": "number", "description": "金額（正數）"},
+                    "description": {"type": "string", "description": "收入描述"},
+                    "source": {"type": "string", "description": "收入來源"}
+                },
+                "required": ["amount", "description"]
+            }
         }
     },
     {
-        "name": "find_student",
-        "description": "查詢學生資料：用戶問某位學生嘅上堂時間、進度、聯絡方法時用",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string", "description": "學生名（中文或英文）"}
-            },
-            "required": ["name"]
+        "type": "function",
+        "function": {
+            "name": "find_student",
+            "description": "查詢學生資料：用戶問某位學生嘅上堂時間、進度、聯絡方法時用",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "name": {"type": "string", "description": "學生名（中文或英文）"}
+                },
+                "required": ["name"]
+            }
         }
     },
     {
-        "name": "log_lesson",
-        "description": "記錄一堂課內容：當用戶講「幫我記低今日教咗乜」時使用",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "student_name": {"type": "string", "description": "學生名"},
-                "content": {"type": "string", "description": "課堂內容"},
-                "date": {"type": "string", "description": "日期（YYYY-MM-DD，預設今日）"}
-            },
-            "required": ["student_name", "content"]
+        "type": "function",
+        "function": {
+            "name": "log_lesson",
+            "description": "記錄一堂課內容：當用戶講「幫我記低今日教咗乜」時使用",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "student_name": {"type": "string", "description": "學生名"},
+                    "content": {"type": "string", "description": "課堂內容"},
+                    "date": {"type": "string", "description": "日期（YYYY-MM-DD，預設今日）"}
+                },
+                "required": ["student_name", "content"]
+            }
         }
     },
     {
-        "name": "query_expenses",
-        "description": "查詢支出總額或明細，例如「今個月使咗幾多」",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "period": {"type": "string", "description": "時間範圍（today/this_week/this_month/last_month）"},
-                "category": {"type": "string", "description": "分類篩選（可選）"}
-            },
-            "required": ["period"]
+        "type": "function",
+        "function": {
+            "name": "query_expenses",
+            "description": "查詢支出總額或明細，例如「今個月使咗幾多」",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "period": {"type": "string", "description": "時間範圍（today/this_week/this_month/last_month）"},
+                    "category": {"type": "string", "description": "分類篩選（可選）"}
+                },
+                "required": ["period"]
+            }
         }
     },
     {
-        "name": "correct_last_entry",
-        "description": "修改最近一筆記錄：當用戶講「改返」「唔係，應該係」等時使用",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "field": {"type": "string", "description": "要改嘅欄位（amount/description/vendor/category）"},
-                "new_value": {"type": "string", "description": "新值"}
-            },
-            "required": ["field", "new_value"]
+        "type": "function",
+        "function": {
+            "name": "correct_last_entry",
+            "description": "修改最近一筆記錄嘅金額或內容。當用戶說『改做XX』、『改返』、『頭先嗰筆』等修正類語句時使用。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "field": {"type": "string", "description": "要改嘅欄位（amount/description/vendor/category）"},
+                    "new_value": {"type": "string", "description": "新值"}
+                },
+                "required": ["field", "new_value"]
+            }
         }
     }
 ]
@@ -108,20 +126,16 @@ def _load_recent_history(limit: int = 10) -> List[str]:
 
 
 def _build_system_prompt(recent: List[str]) -> str:
-    profile = (
-        "You are Jarvis - an assistant for a guitar teacher Hopan. "
-        "Default currency is HKD. Students managed in Notion. "
+    # New concise Cantonese system prompt per request
+    system = (
+        "你係 Jarvis，Hopan 嘅私人AI助手。你講嘢簡潔、有少少幽默、用廣東話口語。"
+        "如果用戶嘅訊息唔需要 call 任何 tool，直接用自然嘅廣東話回覆，保持 1-2 句就好。"
     )
+    # append recent history if present
     history = "\n".join(recent)
-    guidance = (
-        "You have access to tools. When user asks to record expenses or incomes, call the corresponding tool with structured args. "
-        "Prefer tools over free-form text. For conversational queries, use chat_reply tool. "
-        "Respect the following common accounting input formats: e.g. '-88 lunch McCafe' (expense), '+3000 tuition' (income), or natural language. "
-    )
-    parts = [profile, guidance]
     if history:
-        parts.append("Recent conversation history:\n" + history)
-    return "\n\n".join(parts)
+        system = system + "\n\nRecent conversation history:\n" + history
+    return system
 
 
 def route(text: str, entity_context: str = '', recent: List[str] = None) -> Dict[str, Any]:
@@ -162,20 +176,55 @@ def route(text: str, entity_context: str = '', recent: List[str] = None) -> Dict
     payload = {
         "model": MODEL,
         "messages": messages,
-        "functions": TOOLS,
-        "function_call": "auto",
+        # OpenRouter expects the newer 'tools' key (not 'functions')
+        "tools": TOOLS,
+        # use new key name for tool selection
+        "tool_choice": "auto",
         "temperature": 0.0,
     }
 
     headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
+    # Debug logs to help E2E diagnose function-calling issues
+    try:
+        print("[OPENROUTER DEBUG] Sending request to:", OPENROUTER_URL)
+        print("[OPENROUTER DEBUG] Payload keys:", list(payload.keys()))
+        print("[OPENROUTER DEBUG] API_KEY length:", len(OPENROUTER_API_KEY) if OPENROUTER_API_KEY else 0)
+    except Exception:
+        pass
+
     resp = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=15)
+    # CRITICAL DEBUG: print raw response text immediately, before any parsing
+    try:
+        print("[RAW RESPONSE]", resp.text[:500])
+    except Exception:
+        pass
     resp.raise_for_status()
     data = resp.json()
-    choice = data.get('choices', [])[0]
+    choices = data.get('choices') or []
+    if not choices:
+        # empty response from model — fallback to no tool
+        return {'tool': None, 'args': None, 'assistant': None}
+    choice = choices[0]
     msg = choice.get('message', {})
-    # if tool call
-    if msg.get('function_call'):
-        fc = msg.get('function_call')
+
+    # New/OpenRouter format: 'tool_calls' array
+    if msg.get('tool_calls'):
+        try:
+            tc = msg['tool_calls'][0]
+            tool_name = tc['function']['name']
+            tool_args_raw = tc['function'].get('arguments') or '{}'
+            try:
+                tool_args = json.loads(tool_args_raw)
+            except Exception:
+                tool_args = {}
+            return {'tool': tool_name, 'args': tool_args, 'assistant': None}
+        except Exception:
+            # fallthrough to other parsing strategies
+            pass
+
+    # Backwards-compatible fallbacks: 'function_call' or 'tool_call'
+    fc = msg.get('function_call') or msg.get('tool_call')
+    if fc:
         name = fc.get('name')
         args_raw = fc.get('arguments') or '{}'
         try:
@@ -183,6 +232,7 @@ def route(text: str, entity_context: str = '', recent: List[str] = None) -> Dict
         except Exception:
             args = {}
         return {'tool': name, 'args': args, 'assistant': None}
+
     # else assistant content
     assistant_text = msg.get('content')
     return {'tool': None, 'args': None, 'assistant': assistant_text}

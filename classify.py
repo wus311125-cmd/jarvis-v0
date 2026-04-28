@@ -4,6 +4,8 @@ from typing import List
 
 from jarvis.llm_prompts import LLM_CLASSIFY_PROMPT
 import requests
+from types import SimpleNamespace
+import re
 
 OPENROUTER_KEY = os.getenv('OPENROUTER_API_KEY')
 MODEL = os.getenv('CLASSIFY_MODEL', 'gpt-5-mini')
@@ -42,3 +44,49 @@ def classify_intent(rewritten: str):
         return ('student', 0.85)
     # fallback
     return ('chat', 0.5)
+
+
+async def classify(text: str):
+    """Compatibility coroutine for legacy callers.
+    Returns an object with attributes: type, confidence
+    """
+    intent, confidence = classify_intent(text)
+    # keep compatibility: older code expects cls_res.type in ('expense_text','expense')
+    # classify_intent returns 'expense' for expense-like texts
+    return SimpleNamespace(type=intent, confidence=confidence)
+
+
+async def llm_extract_expense(text: str) -> dict:
+    """Lightweight expense extractor used as fallback for LLM extraction.
+    Tries simple regex to pull an amount and a short description.
+    """
+    # quick amount regex: capture optional minus, optional currency symbol, number
+    m = re.search(r"(-)?\s*(?:HKD|\$|USD|CNY)?\s*([0-9]+(?:\.[0-9]+)?)", text)
+    amount = None
+    currency = 'HKD'
+    if m:
+        # if there is a leading '-', treat as expense
+        amt = float(m.group(2))
+        amount = abs(amt)
+        # detect currency token if present
+        cur_token = re.search(r"\b(HKD|USD|CNY)\b", text, re.IGNORECASE)
+        if cur_token:
+            currency = cur_token.group(1).upper()
+
+    # naive merchant/description: remove amount token
+    desc = re.sub(r"(-)?\s*(?:HKD|\$|USD|CNY)?\s*[0-9]+(?:\.[0-9]+)?", "", text).strip()
+    # category heuristic: look for common keywords
+    category = None
+    if any(k in text.lower() for k in ['食', '午餐', '晚餐', '餐', 'coffee', '麥當勞']):
+        category = 'food'
+    elif any(k in text.lower() for k in ['uber', '的士', 'taxi', '交通']):
+        category = 'transport'
+
+    return {
+        'amount': amount,
+        'currency': currency,
+        'category': category,
+        'merchant': None,
+        'date': None,
+        'description': desc,
+    }

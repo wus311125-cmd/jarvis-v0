@@ -13,6 +13,18 @@ import logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+
+def rewrite_intent(text: str, entity_context: str = '', recent=None) -> str:
+    """Safe no-op rewrite_intent fallback.
+
+    Keep minimal so upstream routing can call safely when richer rewrite isn't available.
+    """
+    try:
+        return text
+    except Exception:
+        logger.exception('rewrite_intent fallback error')
+        return text
+
 TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
 ALLOWED = int(os.environ["ALLOWED_USER_ID"])
 VAULT = Path(os.environ["OBSIDIAN_VAULT"])
@@ -284,13 +296,13 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
             args = route_res.get('args') or {}
             logger.info(f"[ROUTE] tool_call detected: %s %s", tool, args)
             # map tool names to actions
-            if tool == 'record_expense':
+            if tool in ('record_expense', 'log_expense'):
                 rec = {
                     'timestamp': datetime.datetime.now().isoformat(),
                     'amount': float(args.get('amount', 0)),
                     'currency': args.get('currency','HKD'),
-                    'category': None,
-                    'merchant': args.get('description',''),
+                    'category': args.get('category') or None,
+                    'merchant': args.get('vendor') or args.get('merchant') or args.get('description',''),
                     'date': datetime.date.today().isoformat(),
                     'note': '',
                     'source': 'telegram',
@@ -298,11 +310,11 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                 rowid = await asyncio.to_thread(expense.store_expense, rec)
                 await send_reply(update, expense.format_expense_confirmation(rec))
                 return
-            elif tool == 'record_income':
+            elif tool in ('record_income', 'log_income'):
                 # simple acknowledge for income
                 await send_reply(update, f"已記收入：{args.get('amount')} {args.get('currency','HKD')} · {args.get('description','')}")
                 return
-            elif tool == 'query_student':
+            elif tool in ('query_student','find_student'):
                 try:
                     from jarvis.student import find_student
                     s = find_student(args.get('name',''))
@@ -313,10 +325,13 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                     res = await intake.process_text(text, source='telegram')
                     await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
                     return
-            elif tool == 'update_student_progress':
+            elif tool in ('update_student_progress','log_lesson'):
                 try:
                     from jarvis.student import log_lesson
-                    out = log_lesson(args.get('name',''), args.get('notes',''))
+                    # support both arg names
+                    student = args.get('student_name') or args.get('name') or args.get('student')
+                    content = args.get('content') or args.get('notes') or args.get('description','')
+                    out = log_lesson(student or '', content, lesson_num=None)
                     await send_reply(update, out)
                     return
                 except Exception:
@@ -343,6 +358,35 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                     conn.close()
                     res = await intake.process_text(text, source='telegram')
                     await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+                    return
+            elif tool == 'correct_last_entry':
+                try:
+                    # Minimal correction implementation: update latest expense or intake row
+                    field = args.get('field')
+                    new_value = args.get('new_value')
+                    if field == 'amount':
+                        # update last expense amount
+                        conn = sqlite3.connect(str(expense.DB_PATH))
+                        cur = conn.cursor()
+                        cur.execute('SELECT id FROM expenses ORDER BY id DESC LIMIT 1')
+                        row = cur.fetchone()
+                        if row:
+                            eid = row[0]
+                            try:
+                                amt = float(new_value)
+                                cur.execute('UPDATE expenses SET amount=? WHERE id=?', (amt, eid))
+                                conn.commit()
+                                conn.close()
+                                await send_reply(update, f'已更新最近一筆金額為 {amt}。')
+                                return
+                            except Exception:
+                                conn.close()
+                    # fallback
+                    await send_reply(update, '我試過改最近一筆，但出咗問題。')
+                    return
+                except Exception:
+                    logger.exception('[ROUTE] correct_last_entry failed')
+                    await send_reply(update, '修改失敗。')
                     return
             elif tool == 'chat_reply':
                 try:
