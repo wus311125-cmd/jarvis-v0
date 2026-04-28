@@ -250,6 +250,21 @@ def _build_system_prompt(recent: List[str], entity_context: str = '') -> str:
     history = "\n".join(recent)
     if history:
         system = system + "\n\nRecent conversation history:\n" + history
+    # inject few-shot intent examples for LLM guidance
+    try:
+        fs_path = os.path.join(os.path.dirname(__file__), 'few_shots.json')
+        if os.path.exists(fs_path):
+            with open(fs_path, 'r', encoding='utf-8') as f:
+                import json as _json
+                shots = _json.load(f)
+            examples = []
+            for s in shots:
+                examples.append(f'• 「{s.get("input","")}" → {s.get("tool","")}（{s.get("why","")}）')
+            if examples:
+                system = system + "\n\n【意圖判斷範例（從經驗學到）】\n" + "\n".join(examples)
+    except Exception:
+        # non-fatal; ignore few-shots if file unreadable
+        pass
     return system
 
 

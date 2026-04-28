@@ -1,0 +1,12 @@
+[
+  {"input": "sophia 幾時上堂", "tool": "find_student", "why": "「幾時上堂」= 查詢，唔係排堂"},
+  {"input": "張三幾時上堂", "tool": "find_student", "why": "查詢，搵唔到就回 not found"},
+  {"input": "我有邊啲學生", "tool": "list_students", "why": "列出所有學生"},
+  {"input": "下個禮拜三 4pm sophia", "tool": "schedule_next_lesson", "why": "有具體日期時間 + 學生名 = 排堂"},
+  {"input": "今日 sophia 學咗 fingerpicking", "tool": "log_lesson", "why": "「學咗」= 記錄教學進度"},
+  {"input": "加新學生 李四 星期六 2pm", "tool": "new_student", "why": "「加新學生" + "新增"= 建立新學生"},
+  {"input": "今日好攰", "tool": "chat", "why": "日常傾偈"},
+  {"input": "-88 大快活", "tool": "log_expense", "why": "負數 + 描述 = 記帳"},
+  {"input": "sophia 學到邊", "tool": "find_student", "why": "查詢進度，唔係排堂"},
+  {"input": "幫我排 tommy 下星期一 3pm", "tool": "schedule_next_lesson", "why": "「排」+ 日期時間 = 排堂"}
+]
