@@ -282,6 +282,16 @@ def _build_system_prompt(recent: List[str], entity_context: str = '') -> str:
                 examples.append(f'• 「{s.get("input","")}" → {s.get("tool","")}（{s.get("why","")}）')
             if examples:
                 system = system + "\n\n【意圖判斷範例（從經驗學到）】\n" + "\n".join(examples)
+                # Add explicit function-calling examples for common corrections to bias model to emit structured calls
+                system = system + "\n\n【範例：修正 (correction) 應回傳工具呼叫】\n"
+                system = system + (
+                    "User: 頭先嗰筆改做 78\n"
+                    "Assistant (function-calling): {\n  \"tool_calls\": [\n    {\"function\": {\"name\": \"correct_last_entry\", \"arguments\": \"{\\\"field\\\": \\\"amount\\\", \\\"new_value\\\": 78}\"}}\n  ]\n}\n"
+                )
+                system = system + (
+                    "User: 頭先嗰筆改做 大家樂\n"
+                    "Assistant (function-calling): {\n  \"tool_calls\": [\n    {\"function\": {\"name\": \"correct_last_entry\", \"arguments\": \"{\\\"field\\\": \\\"merchant\\\", \\\"new_value\\\": \\\"大家樂\\\"}\"}}\n  ]\n}\n"
+                )
     except Exception:
         # non-fatal; ignore few-shots if file unreadable
         pass
