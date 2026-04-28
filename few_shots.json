@@ -66,4 +66,15 @@
     "tool": "learn_from_correction + find_student",
     "why": "糾正：有學生名但冇日期時間 = 查詢而唔係排堂"
   }
+  ,
+  {
+    "input": "頭先嗰筆改做 78",
+    "tool": "correct_last_entry",
+    "why": "「改做 X" = 修改上一筆。數字 = amount → field='amount', new_value=78"
+  },
+  {
+    "input": "頭先嗰筆改做 大家樂",
+    "tool": "correct_last_entry",
+    "why": "「改做 X" = 修改上一筆。文字 = merchant → field='merchant', new_value='大家樂'"
+  }
 ]

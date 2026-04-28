@@ -288,6 +288,9 @@ def _build_system_prompt(recent: List[str], entity_context: str = '') -> str:
     # self-learning rules: when user corrects you, record lesson and execute corrected intent
     system = system + "\n\n【自我學習規則】\n- 當用戶以「唔係」「錯咗」「我係想」「唔啱」等字眼糾正你嘅理解，請呼叫 learn_from_correction 工具記低教訓，並同時執行正確嘅工具。\n- 你可以在一次回應中同時呼叫多個 tools（例如 learn_from_correction 然後 find_student）。\n- 回覆格式：簡短確認學到嘅教訓，然後提供正確結果。例如：\n  「明白，已記住：冇日期時間 = 查詢。sophia 下次上堂：2026-05-06 16:00」\n"
 
+    # Guidance to encourage structured function-calling for corrections
+    system = system + "\n\n【修正呼叫格式建議】\n- 當你處理用戶嘅糾正（correction），盡量以 function-calling（tool_calls）形式回應，唔好只把 JSON embed 入普通文字。\n- 例如：若用戶講「頭先嗰筆改做 78」，請呼叫 correct_last_entry 並傳入 arguments（嚴格 JSON 字串或 native function_call depending on API）如下：\n  {\n    \"tool_calls\": [\n      {\"function\": {\"name\": \"correct_last_entry\", \"arguments\": \"{\\\"field\\\": \\\"amount\\\", \\\"new_value\\\": 78}\"}}\n    ]\n  }\n- 同時（若唔係單純糾正金額，而係用戶改變意圖），可先呼叫 learn_from_correction 再執行正確工具，例如：learn_from_correction + find_student。\n- 簡短、結構化、用廣東話回覆。\n"
+
     # (no strong response-format enforcement here — keep few-shots + self-learning rules only)
     return system
 
@@ -492,6 +495,103 @@ def execute_tool(tool_name: str, args: dict | None):
         if tool_name == "find_student":
             from jarvis.student import find_student
             return find_student(args.get("name") or args.get("student_name") or args.get("student", ""))
+
+        # log_expense / record_expense: store an expense record
+        if tool_name in ("log_expense", "record_expense"):
+            try:
+                from skills import expense as _expense
+                rec = {
+                    'timestamp': datetime.now().isoformat(),
+                    'amount': float(args.get('amount', 0)),
+                    'currency': args.get('currency', 'HKD'),
+                    'category': args.get('category') or None,
+                    'merchant': args.get('vendor') or args.get('merchant') or args.get('description',''),
+                    'date': args.get('date') or datetime.now().date().isoformat(),
+                    'note': args.get('note',''),
+                    'source': 'tool',
+                }
+                rowid = _expense.store_expense(rec)
+                return {'ok': True, 'rowid': rowid, 'record': rec}
+            except Exception as e:
+                return {'error': str(e)}
+
+        # log_income: acknowledge or store as income (mirror of expense store with positive amount)
+        if tool_name in ("log_income", "record_income"):
+            try:
+                from skills import expense as _expense
+                rec = {
+                    'timestamp': datetime.now().isoformat(),
+                    'amount': float(args.get('amount', 0)),
+                    'currency': args.get('currency', 'HKD'),
+                    'category': args.get('category') or 'income',
+                    'merchant': args.get('source') or args.get('description',''),
+                    'date': args.get('date') or datetime.now().date().isoformat(),
+                    'note': args.get('note',''),
+                    'source': 'tool_income',
+                }
+                # store as negative to keep same table semantics? store_expense expects expense rows.
+                # We'll store positive amount but tag category for income.
+                rowid = _expense.store_expense(rec)
+                return {'ok': True, 'rowid': rowid, 'record': rec}
+            except Exception as e:
+                return {'error': str(e)}
+
+        # query_expenses: simple aggregator for period
+        if tool_name == 'query_expenses':
+            try:
+                from skills import expense as _expense
+                period = args.get('period','today')
+                conn = sqlite3.connect(str(_expense.DB_PATH))
+                cur = conn.cursor()
+                if period in ('today','this_day'):
+                    d = datetime.now().date().isoformat()
+                    rows = cur.execute("SELECT amount FROM expenses WHERE date=?", (d,)).fetchall()
+                elif period in ('this_month', 'month'):
+                    today = datetime.now().date()
+                    month_start = today.replace(day=1).isoformat()
+                    rows = cur.execute("SELECT amount FROM expenses WHERE date>=?", (month_start,)).fetchall()
+                else:
+                    # fallback: return all
+                    rows = cur.execute("SELECT amount FROM expenses").fetchall()
+                total = sum([r[0] for r in rows]) if rows else 0
+                conn.close()
+                return {'period': period, 'total': total, 'count': len(rows)}
+            except Exception as e:
+                return {'error': str(e)}
+
+        # correct_last_entry: naive correction of last expense row
+        if tool_name == 'correct_last_entry':
+            try:
+                field = args.get('field')
+                new_value = args.get('new_value')
+                from skills import expense as _expense
+                # whitelist allowed updatable columns to avoid SQL injection / invalid columns
+                allowed = {'amount', 'merchant', 'category', 'date', 'note'}
+                if not field or field not in allowed:
+                    return {'error': f'invalid field: {field}. allowed={sorted(list(allowed))}'}
+
+                conn = sqlite3.connect(str(_expense.DB_PATH))
+                cur = conn.cursor()
+                cur.execute('SELECT id FROM expenses ORDER BY id DESC LIMIT 1')
+                row = cur.fetchone()
+                if not row:
+                    conn.close()
+                    return {'error': 'no expense rows'}
+                eid = row[0]
+
+                # parameterize value; column name inserted from whitelist only
+                if field == 'amount':
+                    val = float(new_value)
+                else:
+                    val = str(new_value)
+
+                sql = f'UPDATE expenses SET {field}=? WHERE id=?'
+                cur.execute(sql, (val, eid))
+                conn.commit()
+                conn.close()
+                return {'ok': True, 'id': eid, 'field': field, 'new_value': val}
+            except Exception as e:
+                return {'error': str(e)}
 
         # new_student: expects name required, other fields optional
         if tool_name == "new_student":
