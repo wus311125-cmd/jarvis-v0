@@ -381,9 +381,17 @@ async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
         if caption:
             summary = f"{caption} {summary}".strip()
         if summary:
-            cls_res = await classify.classify(summary)
-            if cls_res and getattr(cls_res, 'type', None) and cls_res.type != 'unknown':
-                parsed['type'] = cls_res.type
+            # classify.classify was removed; use classify_intent which returns (intent, confidence)
+            try:
+                intent, conf = classify.classify_intent(summary)
+                # map intent to parsed['type'] when meaningful
+                if intent == 'expense':
+                    parsed['type'] = 'receipt'
+                elif intent and intent != 'chat':
+                    parsed['type'] = intent
+            except Exception:
+                # fallback: do nothing
+                pass
     except Exception:
         pass
 
