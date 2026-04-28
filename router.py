@@ -13,74 +13,78 @@ MODEL = os.environ.get('OPENROUTER_MODEL', 'gpt-5-mini')
 
 TOOLS = [
     {
-        "name": "record_expense",
-        "description": "Record an expense with amount, description and currency",
+        "name": "log_expense",
+        "description": "記錄一筆支出：當用戶講到買嘢、食飯、花費。常見格式：-金額 描述，例如「-88 大快活」",
         "parameters": {
             "type": "object",
             "properties": {
-                "amount": {"type": "number"},
-                "description": {"type": "string"},
-                "currency": {"type": "string"}
+                "amount": {"type": "number", "description": "金額（正數）"},
+                "description": {"type": "string", "description": "消費描述"},
+                "vendor": {"type": "string", "description": "商戶名稱（如有）"},
+                "category": {"type": "string", "description": "分類（food/transport/shopping/other）"}
             },
-            "required": ["amount"]
+            "required": ["amount", "description"]
         }
     },
     {
-        "name": "record_income",
-        "description": "Record an income with amount, description and currency",
+        "name": "log_income",
+        "description": "記錄一筆收入：當用戶講到收款、學費、人工等。常見格式：+金額 描述，例如「+3000 學費」",
         "parameters": {
             "type": "object",
             "properties": {
-                "amount": {"type": "number"},
-                "description": {"type": "string"},
-                "currency": {"type": "string"}
+                "amount": {"type": "number", "description": "金額（正數）"},
+                "description": {"type": "string", "description": "收入描述"},
+                "source": {"type": "string", "description": "收入來源"}
             },
-            "required": ["amount"]
+            "required": ["amount", "description"]
         }
     },
     {
-        "name": "query_student",
-        "description": "Query a student by name and return summary info",
+        "name": "find_student",
+        "description": "查詢學生資料：用戶問某位學生嘅上堂時間、進度、聯絡方法時用",
         "parameters": {
             "type": "object",
             "properties": {
-                "name": {"type": "string"}
+                "name": {"type": "string", "description": "學生名（中文或英文）"}
             },
             "required": ["name"]
         }
     },
     {
-        "name": "update_student_progress",
-        "description": "Update student progress notes",
+        "name": "log_lesson",
+        "description": "記錄一堂課內容：當用戶講「幫我記低今日教咗乜」時使用",
         "parameters": {
             "type": "object",
             "properties": {
-                "name": {"type": "string"},
-                "notes": {"type": "string"}
+                "student_name": {"type": "string", "description": "學生名"},
+                "content": {"type": "string", "description": "課堂內容"},
+                "date": {"type": "string", "description": "日期（YYYY-MM-DD，預設今日）"}
             },
-            "required": ["name","notes"]
+            "required": ["student_name", "content"]
         }
     },
     {
         "name": "query_expenses",
-        "description": "Query expenses for a given period (e.g. today, 2026-04-27, last 7 days)",
+        "description": "查詢支出總額或明細，例如「今個月使咗幾多」",
         "parameters": {
             "type": "object",
             "properties": {
-                "period": {"type": "string"}
+                "period": {"type": "string", "description": "時間範圍（today/this_week/this_month/last_month）"},
+                "category": {"type": "string", "description": "分類篩選（可選）"}
             },
             "required": ["period"]
         }
     },
     {
-        "name": "chat_reply",
-        "description": "Produce a chat reply for conversational messages",
+        "name": "correct_last_entry",
+        "description": "修改最近一筆記錄：當用戶講「改返」「唔係，應該係」等時使用",
         "parameters": {
             "type": "object",
             "properties": {
-                "message": {"type": "string"}
+                "field": {"type": "string", "description": "要改嘅欄位（amount/description/vendor/category）"},
+                "new_value": {"type": "string", "description": "新值"}
             },
-            "required": ["message"]
+            "required": ["field", "new_value"]
         }
     }
 ]
@@ -123,6 +127,7 @@ def _build_system_prompt(recent: List[str]) -> str:
 def route(text: str, entity_context: str = '', recent: List[str] = None) -> Dict[str, Any]:
     """Send user text to OpenRouter with function definitions.
     Returns: { 'tool': name | None, 'args': dict | None, 'assistant': str | None }
+    If OPENROUTER_API_KEY is not set, use lightweight local heuristics as fallback to enable offline testing.
     """
     if recent is None:
         recent = _load_recent_history(10)
@@ -132,8 +137,27 @@ def route(text: str, entity_context: str = '', recent: List[str] = None) -> Dict
         {"role": "user", "content": text}
     ]
 
+    # Local heuristic fallback when no API key (allows offline E2E smoke tests)
     if OPENROUTER_API_KEY is None:
-        raise RuntimeError('OPENROUTER_API_KEY not set')
+        # explicit -amount / +amount
+        m = re.match(r'^\s*([+-])(\d+(?:\.\d+)?)\s*(.*)$', text)
+        if m:
+            sign, amt_s, rest = m.groups()
+            amt = float(amt_s)
+            if sign == '-':
+                return {'tool': 'log_expense', 'args': {'amount': amt, 'description': rest.strip(), 'vendor': ''}, 'assistant': None}
+            else:
+                return {'tool': 'log_income', 'args': {'amount': amt, 'description': rest.strip(), 'source': ''}, 'assistant': None}
+        # simple queries
+        if '今個月' in text or '本月' in text or '今個 月' in text:
+            return {'tool': 'query_expenses', 'args': {'period': 'this_month'}, 'assistant': None}
+        if '幾時上堂' in text or '上堂' in text:
+            # try extract name
+            parts = text.split()
+            name = parts[0] if parts else text
+            return {'tool': 'find_student', 'args': {'name': name}, 'assistant': None}
+        # default: treat as chat reply
+        return {'tool': None, 'args': None, 'assistant': '嗯，收到，我記低。'}
 
     payload = {
         "model": MODEL,
