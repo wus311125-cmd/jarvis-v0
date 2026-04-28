@@ -36,13 +36,16 @@ def rewrite_intent(message: str, entity_context: str, recent_turns: List[str]) -
 
 def classify_intent(rewritten: str):
     """Placeholder classifier: return (intent, confidence). Real classifier already exists elsewhere; v0.1 simple heuristics."""
+    # Conservative heuristic: only detect explicit monetary expressions as 'expense'.
+    # Remove broad keyword-based routing (e.g., '學', '上堂') to avoid bypassing LLM-native routing.
     text = rewritten.lower()
-    # expense patterns
-    if any(k in text for k in ['記', '收', '花', '付', '蚊', 'hk', '$']):
+    # explicit amount patterns (e.g., "-88", "$300", "3000")
+    m = re.search(r"(-)?\s*(?:hkd|\$|usd|cny)?\s*([0-9]+(?:\.[0-9]+)?)", text, re.IGNORECASE)
+    if m:
+        # if there's an explicit numeric amount, treat as expense with high confidence
         return ('expense', 0.95)
-    if any(k in text for k in ['學', '課', '上堂', '約']):
-        return ('student', 0.85)
-    # fallback
+
+    # otherwise be conservative and default to chat — let the LLM handle intent classification
     return ('chat', 0.5)
 
 
