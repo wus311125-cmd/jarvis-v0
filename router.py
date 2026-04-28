@@ -147,12 +147,12 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "correct_last_entry",
-            "description": "修改最近一筆記錄嘅金額或內容。當用戶說『改做XX』、『改返』、『頭先嗰筆』等修正類語句時使用。",
+            "description": "修改最近一筆記錄。當用戶講「改做 X」「改為 X」「改返 X」「頭先嗰筆改做 X」等，請呼叫此 tool 並判斷要改嘅欄位與新值。",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "field": {"type": "string", "description": "要改嘅欄位（amount/description/vendor/category）"},
-                    "new_value": {"type": "string", "description": "新值"}
+                    "field": {"type": "string", "description": "要改嘅欄位。LLM 請根據用戶講法判斷：若用戶講數字 → field='amount'；講店名或文字 → field='merchant'；講類別 → field='category'；講日期 → field='date'；講備註或文字 → field='note'。"},
+                    "new_value": {"type": "string", "description": "新值。根據用戶原話提取：數字請傳 number（例如 78），文字請傳 string（例如 '大家樂'）。"}
                 },
                 "required": ["field", "new_value"]
             }
