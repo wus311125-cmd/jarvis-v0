@@ -209,7 +209,7 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
     # New intent routing v0.1 flow: entity_lookup -> rewrite -> classify -> confidence gate -> dispatch
     try:
-        from classify import classify_intent, rewrite_intent
+        from router import route as router_route, _load_recent_history
         from skills.entity_lookup import lookup_entities
     except Exception:
         logger.exception('[ROUTE] failed to import routing helpers')
@@ -240,19 +240,135 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
         rewritten = text
     logger.info(f"[ROUTE] step=%s, result=%s", step, rewritten)
 
-    # 3) classify intent
-    step = 'classify'
+    # 3) route via function-calling router (OpenRouter)
+    step = 'route'
     try:
-        intent, confidence = classify_intent(rewritten)
+        recent_ctx = _load_recent_history(10)
+        route_res = router_route(rewritten, entities_res.get('entity_context',''), recent_ctx)
     except Exception:
-        logger.exception('[ROUTE] classify_intent failed, fallback to intake')
-        intent, confidence = ('unknown', 0.0)
-    logger.info(f"[ROUTE] step=%s, result=%s, confidence=%.2f", step, intent, confidence)
+        logger.exception('[ROUTE] router_route failed, fallback to intake')
+        route_res = {'tool': None, 'args': None, 'assistant': None}
+    logger.info(f"[ROUTE] step=%s, result=%s", step, route_res)
 
-    # 4) confidence gate and dispatch
-    step = 'confidence_gate'
-    # thresholds: >=0.9 auto, 0.6-0.9 suggest/confirm, <0.6 -> chat
+    # 4) dispatch based on tool calls
+    step = 'dispatch'
     try:
+        # Fast rule-based short-circuit: explicit -<number> or +<number> prefix
+        m = re.match(r'^\s*([+-])(\d+(?:\.\d+)?)\s*(.*)$', text)
+        if m:
+            sign, amt_s, rest = m.groups()
+            amt = float(amt_s)
+            if sign == '-':
+                # direct expense record
+                rc = {
+                    'timestamp': datetime.datetime.now().isoformat(),
+                    'amount': abs(amt),
+                    'currency': 'HKD',
+                    'category': rest.split()[0] if rest else None,
+                    'merchant': ' '.join(rest.split()[1:]) if len(rest.split())>1 else '',
+                    'date': datetime.date.today().isoformat(),
+                    'note': '',
+                    'source': 'telegram',
+                }
+                rowid = await asyncio.to_thread(expense.store_expense, rc)
+                await send_reply(update, expense.format_expense_confirmation(rc))
+                return
+            else:
+                # income
+                # reuse expense.store_expense but negative logic: store as income via intake or similar; fallback to chat reply
+                await send_reply(update, f"已記收入：{amt} HKD。")
+                return
+
+        if route_res.get('tool'):
+            tool = route_res['tool']
+            args = route_res.get('args') or {}
+            logger.info(f"[ROUTE] tool_call detected: %s %s", tool, args)
+            # map tool names to actions
+            if tool == 'record_expense':
+                rec = {
+                    'timestamp': datetime.datetime.now().isoformat(),
+                    'amount': float(args.get('amount', 0)),
+                    'currency': args.get('currency','HKD'),
+                    'category': None,
+                    'merchant': args.get('description',''),
+                    'date': datetime.date.today().isoformat(),
+                    'note': '',
+                    'source': 'telegram',
+                }
+                rowid = await asyncio.to_thread(expense.store_expense, rec)
+                await send_reply(update, expense.format_expense_confirmation(rec))
+                return
+            elif tool == 'record_income':
+                # simple acknowledge for income
+                await send_reply(update, f"已記收入：{args.get('amount')} {args.get('currency','HKD')} · {args.get('description','')}")
+                return
+            elif tool == 'query_student':
+                try:
+                    from jarvis.student import find_student
+                    s = find_student(args.get('name',''))
+                    await send_reply(update, f"學生資料：{s}")
+                    return
+                except Exception:
+                    logger.exception('[ROUTE] query_student failed')
+                    res = await intake.process_text(text, source='telegram')
+                    await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+                    return
+            elif tool == 'update_student_progress':
+                try:
+                    from jarvis.student import log_lesson
+                    out = log_lesson(args.get('name',''), args.get('notes',''))
+                    await send_reply(update, out)
+                    return
+                except Exception:
+                    logger.exception('[ROUTE] update_student_progress failed')
+                    res = await intake.process_text(text, source='telegram')
+                    await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+                    return
+            elif tool == 'query_expenses':
+                # lightweight: return daily summary from expenses table
+                try:
+                    period = args.get('period','today')
+                    conn = sqlite3.connect(str(expense.DB_PATH))
+                    c = conn.cursor()
+                    if period == 'today':
+                        today = datetime.date.today().isoformat()
+                        q = "SELECT amount, currency, category, merchant FROM expenses WHERE date=?"
+                        rows = c.execute(q, (today,)).fetchall()
+                        total = sum([r[0] for r in rows]) if rows else 0
+                        await send_reply(update, f"今日共 {total} HKD，{len(rows)} 筆。")
+                        conn.close()
+                        return
+                except Exception:
+                    logger.exception('[ROUTE] query_expenses failed')
+                    conn.close()
+                    res = await intake.process_text(text, source='telegram')
+                    await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+                    return
+            elif tool == 'chat_reply':
+                try:
+                    from jarvis.chat import chat_reply
+                    reply = await chat_reply(args.get('message',''))
+                    await send_reply(update, reply)
+                    return
+                except Exception:
+                    logger.exception('[ROUTE] chat_reply failed')
+                    res = await intake.process_text(text, source='telegram')
+                    await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+                    return
+        else:
+            # no tool -> if assistant text provided, send it; else fallback to intake
+            if route_res.get('assistant'):
+                await send_reply(update, route_res.get('assistant'))
+                return
+            logger.info('[ROUTE] no tool call, fallback to intake')
+            res = await intake.process_text(text, source='telegram')
+            await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+            return
+    except Exception:
+        logger.exception('[ROUTE] unexpected error in dispatch')
+        res = await intake.process_text(text, source='telegram')
+        await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+        return
         # handy debug for intent routing
         logger.info(f"Intent routing: intent={intent}")
         if confidence >= 0.9 and intent == 'expense':
