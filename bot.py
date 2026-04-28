@@ -10,8 +10,12 @@ from telegram.ext import (
 load_dotenv()
 
 import logging
+from collections import deque
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+# simple in-memory dedupe for incoming message ids to avoid duplicate processing
+_PROCESSED_MSG_IDS = deque(maxlen=200)
 
 
 def rewrite_intent(text: str, entity_context: str = '', recent=None) -> str:
@@ -210,6 +214,16 @@ WEBHOOK = os.environ.get("TELEGRAM_HOPAN_OS_WEBHOOK")
 async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
     """Generic text handler — registry-driven dispatch."""
     if not await guard(update): return
+    # dedupe: ignore duplicate update.message.message_id seen recently
+    try:
+        mid = update.message.message_id
+        if mid in _PROCESSED_MSG_IDS:
+            logger.info('[ON_TEXT] duplicate message_id %s ignored', mid)
+            return
+        _PROCESSED_MSG_IDS.append(mid)
+    except Exception:
+        # if no message id available, continue
+        pass
     text = (update.message.text or "").strip()
     await update.message.reply_chat_action("typing")
     append_to_daily("Hopan", text)
@@ -251,6 +265,104 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
         logger.exception('[ROUTE] rewrite_intent failed, fallback to original text')
         rewritten = text
     logger.info(f"[ROUTE] step=%s, result=%s", step, rewritten)
+
+    # Short-circuit heuristics BEFORE calling LLM router: deterministic patterns
+    try:
+        # helper: find student name token from student list
+        def _find_name_in_text(txt: str) -> str | None:
+            try:
+                from jarvis.student import list_students
+                lst = list_students()
+                names = [n.get('name','') for n in lst] if isinstance(lst, list) else []
+                low = txt.lower()
+                for name in names:
+                    if not name:
+                        continue
+                    if name.lower() in low:
+                        return name
+            except Exception:
+                return None
+            return None
+
+        # pattern: inquiry about when / progress -> treat as find_student
+        if re.search(r'上到邊|幾時上堂|上堂進度', text):
+            candidate = _find_name_in_text(text)
+            # if not in cached students list, try extract name token before the keywords
+            if not candidate:
+                m_name = re.match(r'(.+?)(?:上到邊|幾時上堂|上堂進度)', text)
+                if m_name:
+                    candidate = m_name.group(1).strip()
+            if candidate:
+                from router import execute_tool
+                res = await asyncio.to_thread(execute_tool, 'find_student', {'name': candidate})
+                # format student reply
+                def _format_student(res):
+                    if not res:
+                        return f"搵唔到 {candidate}。"
+                    props = res.get('properties', {}) if isinstance(res, dict) else {}
+                    name = res.get('name') if isinstance(res, dict) else str(res)
+                    when = props.get('上堂日', {}).get('select') or props.get('開始日期', {}).get('date')
+                    time = ''
+                    try:
+                        rt = props.get('上堂時間', {}).get('rich_text', [])
+                        if rt and isinstance(rt, list):
+                            time = rt[0].get('plain_text','')
+                    except Exception:
+                        time = ''
+                    phone = props.get('電話', {}).get('phone_number')
+                    out = f"[{name}]"
+                    if when:
+                        # when can be dict or select; try to stringify
+                        if isinstance(when, dict):
+                            out += f" 下次上堂：{when.get('start') or when.get('name') or str(when)}"
+                        else:
+                            out += f" 下次上堂：{when}"
+                    if time:
+                        out += f" {time}"
+                    if phone:
+                        out += f" 聯絡：{phone}"
+                    if not (when or time or phone):
+                        out += " （資料不足，請提供日期／時間）"
+                    return out
+                await send_reply(update, _format_student(res))
+                return
+            else:
+                await send_reply(update, "搵唔到學生名，請提供學生全名，例如：minnie 或 陳大文。")
+                return
+
+        # pattern: direct lesson log like "今日教咗 jimmy Fingerpicking"
+        m = re.match(r'今日教咗\s*([^\s，,。]+)\s+(.+)', text)
+        if m:
+            student_candidate = m.group(1).strip()
+            content = m.group(2).strip()
+            # confirm student exists (try list_students then fallback to find_student)
+            exists = False
+            try:
+                from jarvis.student import list_students
+                names = [n.get('name','').lower() for n in list_students() if n.get('name')]
+                if student_candidate.lower() in names:
+                    exists = True
+            except Exception:
+                pass
+            from router import execute_tool
+            if not exists:
+                # call find_student to check existence
+                chk = await asyncio.to_thread(execute_tool, 'find_student', {'name': student_candidate})
+                if chk:
+                    exists = True
+            if exists:
+                res = await asyncio.to_thread(execute_tool, 'log_lesson', {'student_name': student_candidate, 'content': content})
+                # res may be dict or string; handle error dict
+                if isinstance(res, dict) and res.get('error'):
+                    await send_reply(update, f"操作失敗: {res.get('error')}")
+                else:
+                    await send_reply(update, f"已為 {student_candidate} 記錄上堂：{content}")
+                return
+            else:
+                await send_reply(update, f"搵唔到學生 {student_candidate}，要我幫你新增嗎？")
+                return
+    except Exception:
+        logger.exception('[ROUTE] short-circuit heuristics failed')
 
     # 3) route via function-calling router (OpenRouter)
     step = 'route'
@@ -295,6 +407,31 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
             tool = route_res['tool']
             args = route_res.get('args') or {}
             logger.info(f"[ROUTE] tool_call detected: %s %s", tool, args)
+            # Post-router sanity guards: LLM may choose wrong tool or miss args.
+            # If model chose schedule but didn't provide date, treat as a find_student query instead.
+            if tool in ('schedule_next_lesson', 'schedule_next') and not args.get('date'):
+                # try locate student name from args or text
+                candidate = args.get('student_name') or args.get('name') or args.get('student')
+                if not candidate:
+                    # try best-effort from message text
+                    try:
+                mm = re.match(r'(.+?)(?:上到邊|幾時上堂|上堂進度)', (update.message.text or ''))
+                candidate = mm.group(1).strip() if mm else None
+                    except Exception:
+                        candidate = None
+                if candidate:
+                    try:
+                        from router import execute_tool
+                        res = await asyncio.to_thread(execute_tool, 'find_student', {'name': candidate})
+                        if res:
+                            # format as student info
+                            await send_reply(update, f"我睇到 {candidate}，資料：{res.get('properties',{}).get('上堂日') or res.get('properties',{}).get('開始日期') or '（資料不足）'}")
+                            return
+                    except Exception:
+                        pass
+                # fallback: ask user for clarification to avoid wrong schedule
+                await send_reply(update, '請提供學生名同日期，例如：「sophia 下禮拜三 4 點」。')
+                return
             # map tool names to actions
             if tool in ('record_expense', 'log_expense'):
                 rec = {
@@ -314,30 +451,57 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                 # simple acknowledge for income
                 await send_reply(update, f"已記收入：{args.get('amount')} {args.get('currency','HKD')} · {args.get('description','')}")
                 return
-            elif tool in ('query_student','find_student'):
+            elif tool in ('query_student','find_student','list_students','new_student','update_student_progress','log_lesson','schedule_next_lesson','schedule_next'):
+                # Centralized student tools dispatch via router.execute_tool
                 try:
-                    from jarvis.student import find_student
-                    s = find_student(args.get('name',''))
-                    await send_reply(update, f"學生資料：{s}")
-                    return
+                    from router import execute_tool
+                    # execute_tool is sync; run in thread
+                    res = await asyncio.to_thread(execute_tool, tool, args)
+                    # handle structured error
+                    if isinstance(res, dict) and res.get('error'):
+                        await send_reply(update, f"操作失敗: {res.get('error')}")
+                        return
+
+                    # format responses per tool
+                    if tool in ('query_student','find_student'):
+                        if not res:
+                            await send_reply(update, f"搵唔到 {args.get('name') or args.get('student_name','')}。")
+                        else:
+                            # res expected: {'id','name','properties'}
+                            name = res.get('name') if isinstance(res, dict) else str(res)
+                            await send_reply(update, f"學生資料：{name}")
+                        return
+
+                    if tool == 'list_students':
+                        if not res:
+                            await send_reply(update, "學生清單：冇學生。")
+                        else:
+                            if isinstance(res, list):
+                                names = [s.get('name','') for s in res]
+                                await send_reply(update, "學生清單：\n" + "\n".join(names))
+                            else:
+                                await send_reply(update, str(res))
+                        return
+
+                    if tool == 'new_student':
+                        # new_student returns page_id/lesson_db_id or error dict
+                        if isinstance(res, dict) and res.get('page_id'):
+                            await send_reply(update, f"已新增學生：{res.get('page_id')}")
+                        else:
+                            await send_reply(update, str(res))
+                        return
+
+                    if tool in ('update_student_progress','log_lesson'):
+                        await send_reply(update, str(res))
+                        return
+
+                    if tool in ('schedule_next_lesson','schedule_next'):
+                        await send_reply(update, str(res))
+                        return
+
                 except Exception:
-                    logger.exception('[ROUTE] query_student failed')
-                    res = await intake.process_text(text, source='telegram')
-                    await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
-                    return
-            elif tool in ('update_student_progress','log_lesson'):
-                try:
-                    from jarvis.student import log_lesson
-                    # support both arg names
-                    student = args.get('student_name') or args.get('name') or args.get('student')
-                    content = args.get('content') or args.get('notes') or args.get('description','')
-                    out = log_lesson(student or '', content, lesson_num=None)
-                    await send_reply(update, out)
-                    return
-                except Exception:
-                    logger.exception('[ROUTE] update_student_progress failed')
-                    res = await intake.process_text(text, source='telegram')
-                    await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+                    logger.exception('[ROUTE] student tool dispatch failed')
+                    await send_reply(update, '學生工具操作失敗。')
                     return
             elif tool == 'query_expenses':
                 # lightweight: return daily summary from expenses table

@@ -3,22 +3,31 @@ import requests
 import json
 from datetime import datetime
 
-NOTION_API_KEY = os.getenv('NOTION_API_KEY')
 NOTION_VERSION = '2022-06-28'
 STUDENTS_DB_ID = '2dd03430-f7aa-809d-b33c-f2d472e72ca9'
 
-HEADERS = {
-    'Authorization': f'Bearer {NOTION_API_KEY}',
-    'Notion-Version': NOTION_VERSION,
-    'Content-Type': 'application/json'
-}
-
 
 def _req(method, url, **kwargs):
-    if NOTION_API_KEY is None:
+    # Read NOTION_API_KEY at call time so dynamic environments (export after import)
+    key = os.getenv('NOTION_API_KEY')
+    if not key:
         raise RuntimeError('NOTION_API_KEY not set')
-    resp = requests.request(method, url, headers=HEADERS, timeout=15, **kwargs)
-    resp.raise_for_status()
+    headers = {
+        'Authorization': f'Bearer {key}',
+        'Notion-Version': NOTION_VERSION,
+        'Content-Type': 'application/json'
+    }
+    resp = requests.request(method, url, headers=headers, timeout=15, **kwargs)
+    try:
+        resp.raise_for_status()
+    except requests.HTTPError as e:
+        # surface response body for debugging and upstream handling
+        txt = ''
+        try:
+            txt = resp.text
+        except Exception:
+            txt = str(e)
+        raise RuntimeError(f'HTTP {resp.status_code}: {txt}')
     return resp.json()
 
 
@@ -77,7 +86,8 @@ def new_student(name, phone=None, price=None, term=None, day=None,
     url = 'https://api.notion.com/v1/pages'
     properties = {
         'NAME': {'title': [{'text': {'content': name}}]},
-        '狀態': {'select': {'name': '進行中'}},
+        # Notion DB '狀態' is a status property in this workspace
+        '狀態': {'status': {'name': '進行中'}},
         '已約': {'checkbox': True},
     }
     if phone:
@@ -232,39 +242,23 @@ def schedule_next(name, date_str, time_str=None):
         # We will append time_str as a child block to the created page instead.
 
         # Debug: print request body
-        try:
-            print('DEBUG: Notion create page payload:')
-            print(json.dumps(props, ensure_ascii=False, indent=2))
-        except Exception:
-            pass
+        # debug prints removed for production
 
-        # Send request and print response for debugging 400 errors
+        # Send request using _req (which handles headers dynamically). Capture errors.
         try:
-            resp = requests.post(create_url, headers=HEADERS, json=props, timeout=15)
-            try:
-                print('DEBUG: Notion response status:', resp.status_code)
-                print('DEBUG: Notion response text:', resp.text)
-            except Exception:
-                pass
-            if resp.status_code >= 400:
-                return f'操作失敗: {resp.status_code} {resp.text}'
-            # parse json
-            created_page = resp.json()
+            created_page = _req('POST', create_url, json=props)
             created_id = created_page.get('id')
             # if time_str provided, append as child paragraph block to the created page
             if time_str and created_id:
                 try:
                     block_url = f'https://api.notion.com/v1/blocks/{created_id}/children'
                     block_body = {'children': [{'object': 'block', 'type': 'paragraph', 'paragraph': {'rich_text':[{'type':'text','text':{'content': time_str}}]}}]}
-                    bresp = requests.patch(block_url, headers=HEADERS, json=block_body, timeout=15)
-                    try:
-                        print('DEBUG: append block status', bresp.status_code)
-                        print('DEBUG: append block text', bresp.text)
-                    except Exception:
-                        pass
+                    _req('PATCH', block_url, json=block_body)
                 except Exception:
+                    # ignore append failures
                     pass
         except Exception as e:
+            # _req raises RuntimeError with HTTP details for debugging
             return f'操作失敗: {e}'
         # update outer student page 已約 = true
         up_url = f'https://api.notion.com/v1/pages/{page_id}'
