@@ -227,14 +227,26 @@ def _resolve_time(text: str) -> str:
     return text
 
 
-def _build_system_prompt(recent: List[str]) -> str:
-    # New concise Cantonese system prompt per request
+def _build_system_prompt(recent: List[str], entity_context: str = '') -> str:
+    # 大賢者 system prompt — encourage LLM-native routing and tool use
     system = (
-        "你係 Jarvis，Hopan 嘅私人AI助手。你講嘢簡潔、有少少幽默、用廣東話口語。"
-        "如果用戶嘅訊息唔需要 call 任何 tool，直接用自然嘅廣東話回覆，保持 1-2 句就好。"
-        " 你係結他老師 Hopan 嘅助手。你可以管理學生資料、記錄上堂內容、安排下次堂。"
+        "你係大賢者，Hopan 嘅個人 AI 助手 Jarvis 嘅核心。\n"
+        "Hopan 係一個結他老師，有大約 20 個學生，同時用你管理日常記帳。\n\n"
+        "你嘅能力（Skills）\n"
+        "你有以下 tools 可以用。根據用戶意圖自動判斷用邊個：\n"
+        "💰 記帳類：log_expense, log_income, correct_last_entry, query_expenses。當用戶提及金額或收支時使用。\n"
+        "🎸 學生管理類：find_student（查詢學生資料）、list_students、log_lesson（記錄今日課堂）、schedule_next_lesson（安排下次堂）、new_student（新增學生）。\n\n"
+        "判斷規則：\n"
+        "- 如果用戶意圖明確對應某個 tool，直接呼叫該 tool（function calling），唔需要太多額外問題。\n"
+        "- 如果資訊不足（例如 schedule 但冇日期），要以清晰問題追問所需欄位，唔好盲 call tool。\n"
+        "- 如果用戶講嘅唔 match 任何 tool，就直接用廣東話友善回覆（簡短）。\n"
+        "- 當有 conversation memory 時，善用 memory 處理代詞（例如「佢」「嗰個」）。\n"
+        "Entity context：系統會注入來自 DB 嘅 entity context（例如某學生存在與否），你應該善用該資訊來判斷工具使用。\n"
+        "語言：用廣東話回覆，簡潔、有禮。"
     )
-    # append recent history if present
+    if entity_context:
+        system = system + "\n\n## Entity Context\n" + entity_context
+    # append recent history if present (for LLM context awareness)
     history = "\n".join(recent)
     if history:
         system = system + "\n\nRecent conversation history:\n" + history
@@ -263,6 +275,8 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
 
     # Local heuristic fallback when no API key (allows offline E2E smoke tests)
     if OPENROUTER_API_KEY is None:
+        # Offline fallback: very small heuristic set for local smoke tests only.
+        # Keep minimal to avoid divergence from LLM-native routing in production.
         # explicit -amount / +amount
         m = re.match(r'^\s*([+-])(\d+(?:\.\d+)?)\s*(.*)$', text)
         if m:
@@ -272,15 +286,10 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
                 return {'tool': 'log_expense', 'args': {'amount': amt, 'description': rest.strip(), 'vendor': ''}, 'assistant': None}
             else:
                 return {'tool': 'log_income', 'args': {'amount': amt, 'description': rest.strip(), 'source': ''}, 'assistant': None}
-        # simple queries
+        # basic expense queries
         if '今個月' in text or '本月' in text or '今個 月' in text:
             return {'tool': 'query_expenses', 'args': {'period': 'this_month'}, 'assistant': None}
-        if '幾時上堂' in text or '上堂' in text:
-            # try extract name
-            parts = text.split()
-            name = parts[0] if parts else text
-            return {'tool': 'find_student', 'args': {'name': name}, 'assistant': None}
-        # default: treat as chat reply
+        # default offline reply
         return {'tool': None, 'args': None, 'assistant': '嗯，收到，我記低。'}
 
     payload = {
