@@ -1,0 +1,9 @@
+# registry.yaml (partial)
+types:
+  - name: expense_text
+    keywords: ["-", "支出", "買", "食", "午餐", "晚飯", "uber", "taxi", "coffee"]
+    priority: 10
+
+  - name: income_text
+    keywords: ["收入", "收到", "人工", "薪金", "薪水", "freelance", "學費收", "transfer in", "paid", "收款"]
+    priority: 10
