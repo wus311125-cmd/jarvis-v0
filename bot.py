@@ -289,6 +289,61 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
         except Exception:
             history_msgs = []
         route_res = router_route(rewritten, entities_res.get('entity_context',''), recent_ctx, history=history_msgs)
+        # New: normalize potential multiple tool calls returned by router.route
+        calls = []
+        if isinstance(route_res, dict) and route_res.get('tool_calls'):
+            calls = route_res.get('tool_calls')
+        elif isinstance(route_res, dict) and route_res.get('tool'):
+            calls = [{'tool': route_res.get('tool'), 'args': route_res.get('args') or {}}]
+        if calls:
+            executed_results = []
+            try:
+                from router import execute_tool
+                for c in calls:
+                    tool = c.get('tool')
+                    args = c.get('args') or {}
+                    logger.info(f"[ROUTE] executing tool %s with args %s", tool, args)
+                    if tool == 'learn_from_correction':
+                        from learning import learn_from_correction as _lfc
+                        res = _lfc(args.get('original_input',''), args.get('correct_tool',''), args.get('lesson',''), args.get('wrong_tool'))
+                        executed_results.append({'tool': tool, 'result': res})
+                        continue
+                    # execute normal tool
+                    res = await asyncio.to_thread(execute_tool, tool, args)
+                    executed_results.append({'tool': tool, 'result': res})
+            except Exception:
+                logger.exception('[ROUTE] tool execution failed')
+                await send_reply(update, '工具執行失敗。')
+                return
+            # format replies
+            replies = []
+            for er in executed_results:
+                t = er.get('tool')
+                r = er.get('result')
+                if t == 'learn_from_correction' and isinstance(r, dict) and r.get('message'):
+                    replies.append(r.get('message'))
+                elif t in ('find_student','query_student'):
+                    if not r:
+                        replies.append('搵唔到該學生。')
+                    else:
+                        name = r.get('name') if isinstance(r, dict) else str(r)
+                        replies.append(f'學生資料：{name}')
+                elif t == 'list_students':
+                    if isinstance(r, list):
+                        names = [s.get('name','') for s in r]
+                        replies.append('學生清單：\n' + '\n'.join(names))
+                    else:
+                        replies.append(str(r))
+                elif t == 'new_student':
+                    replies.append(str(r))
+                elif t in ('log_lesson','update_student_progress','schedule_next_lesson','schedule_next'):
+                    replies.append(str(r))
+                elif t in ('record_expense','log_expense'):
+                    replies.append(str(r))
+                else:
+                    replies.append(str(r))
+            await send_reply(update, '\n'.join(replies))
+            return
     except Exception:
         logger.exception('[ROUTE] router_route failed, fallback to intake')
         route_res = {'tool': None, 'args': None, 'assistant': None}

@@ -157,6 +157,25 @@ TOOLS = [
             }
         }
     }
+    ,
+    {
+        "type": "function",
+        "function": {
+            "name": "learn_from_correction",
+            "description": "當用戶糾正你嘅理解或 routing 時 call 呢個 tool。記低正確嘅 input -> tool mapping，下次自動用正確嘅 tool。只喺用戶明確表示你做錯咗（例如『唔係』『錯咗』『我係想』）時先 call。",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "original_input": {"type": "string", "description": "用戶原本講嘅嘢（觸發錯誤 routing 嗰句）"},
+                    "wrong_tool": {"type": "string", "description": "你之前錯誤 route 去嘅 tool name"},
+                    "correct_tool": {"type": "string", "description": "用戶糾正後應該用嘅 tool name"},
+                    "lesson": {"type": "string", "description": "一句話總結學到咩，用廣東話寫（例如：冇日期時間 = 查詢，唔係排堂）"}
+                },
+                "required": ["original_input", "correct_tool", "lesson"],
+                "additionalProperties": False
+            }
+        }
+    }
 ]
 
 
@@ -265,6 +284,8 @@ def _build_system_prompt(recent: List[str], entity_context: str = '') -> str:
     except Exception:
         # non-fatal; ignore few-shots if file unreadable
         pass
+    # self-learning rules: when user corrects you, record lesson and execute corrected intent
+    system = system + "\n\n【自我學習規則】\n- 當用戶以「唔係」「錯咗」「我係想」「唔啱」等字眼糾正你嘅理解，請呼叫 learn_from_correction 工具記低教訓，並同時執行正確嘅工具。\n- 你可以在一次回應中同時呼叫多個 tools（例如 learn_from_correction 然後 find_student）。\n- 回覆格式：簡短確認學到嘅教訓，然後提供正確結果。例如：\n  「明白，已記住：冇日期時間 = 查詢。sophia 下次上堂：2026-05-06 16:00」\n"
     return system
 
 
@@ -330,17 +351,24 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
     choice = choices[0]
     msg = choice.get('message', {})
 
-    # New/OpenRouter format: 'tool_calls' array
+    # New/OpenRouter format: 'tool_calls' array — support multiple tool calls sequentially
     if msg.get('tool_calls'):
         try:
-            tc = msg['tool_calls'][0]
-            tool_name = tc['function']['name']
-            tool_args_raw = tc['function'].get('arguments') or '{}'
-            try:
-                tool_args = json.loads(tool_args_raw)
-            except Exception:
-                tool_args = {}
-            return {'tool': tool_name, 'args': tool_args, 'assistant': None}
+            tcalls = msg['tool_calls']
+            parsed_calls = []
+            for tc in tcalls:
+                tool_name = tc['function']['name']
+                tool_args_raw = tc['function'].get('arguments') or '{}'
+                try:
+                    tool_args = json.loads(tool_args_raw)
+                except Exception:
+                    # attempt lenient parse (single quotes) then fallback to empty
+                    try:
+                        tool_args = eval(tool_args_raw)
+                    except Exception:
+                        tool_args = {}
+                parsed_calls.append({'tool': tool_name, 'args': tool_args})
+            return {'tool_calls': parsed_calls, 'assistant': None}
         except Exception:
             # fallthrough to other parsing strategies
             pass
@@ -353,7 +381,10 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
         try:
             args = json.loads(args_raw)
         except Exception:
-            args = {}
+            try:
+                args = eval(args_raw)
+            except Exception:
+                args = {}
         return {'tool': name, 'args': args, 'assistant': None}
 
     # else assistant content
@@ -370,6 +401,15 @@ def execute_tool(tool_name: str, args: dict | None):
     if args is None:
         args = {}
     try:
+        # support batched tool calls passed as list
+        if tool_name == 'batch_calls' and isinstance(args, list):
+            results = []
+            for call in args:
+                t = call.get('tool')
+                a = call.get('args') or {}
+                results.append({ 'call': call, 'result': execute_tool(t, a) })
+            return results
+
         # find_student
         if tool_name == "find_student":
             from jarvis.student import find_student
