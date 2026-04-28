@@ -207,17 +207,105 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
     if handled:
         return
 
+    # New intent routing v0.1 flow: entity_lookup -> rewrite -> classify -> confidence gate -> dispatch
     try:
-        result = await intake.process_text(text, source='telegram')
-    except Exception as e:
-        # unexpected error
-        await update.message.reply_text(f"處理時發生錯誤：{e}")
+        from classify import classify_intent, rewrite_intent
+        from skills.entity_lookup import lookup_entities
+    except Exception:
+        logger.exception('[ROUTE] failed to import routing helpers')
+        # fallback to existing intake pipeline
+        try:
+            result = await intake.process_text(text, source='telegram')
+        except Exception as e:
+            await update.message.reply_text(f"處理時發生錯誤：{e}")
+            return
+        if result.get('ok'):
+            await send_reply(update, result.get('message', '已儲存。'))
+        else:
+            await send_reply(update, result.get('message', '處理失敗。'))
         return
 
-    if result.get('ok'):
-        await send_reply(update, result.get('message', '已儲存。'))
-    else:
-        await send_reply(update, result.get('message', '處理失敗。'))
+    # 1) entity lookup
+    step = 'entity_lookup'
+    entities_res = lookup_entities(text)
+    logger.info(f"[ROUTE] step=%s, result=%s", step, entities_res)
+
+    # 2) rewrite intent (RECAP) using recent daily context as recent_turns
+    step = 'rewrite'
+    recent = load_today_context(10).splitlines() if load_today_context() else []
+    try:
+        rewritten = rewrite_intent(text, entities_res.get('entity_context',''), recent)
+    except Exception:
+        logger.exception('[ROUTE] rewrite_intent failed, fallback to original text')
+        rewritten = text
+    logger.info(f"[ROUTE] step=%s, result=%s", step, rewritten)
+
+    # 3) classify intent
+    step = 'classify'
+    try:
+        intent, confidence = classify_intent(rewritten)
+    except Exception:
+        logger.exception('[ROUTE] classify_intent failed, fallback to intake')
+        intent, confidence = ('unknown', 0.0)
+    logger.info(f"[ROUTE] step=%s, result=%s, confidence=%.2f", step, intent, confidence)
+
+    # 4) confidence gate and dispatch
+    step = 'confidence_gate'
+    # thresholds: >=0.9 auto, 0.6-0.9 suggest/confirm, <0.6 -> chat
+    try:
+        if confidence >= 0.9 and intent == 'expense':
+            # expense auto-store via existing intake pipeline
+            logger.info('[ROUTE] auto expense branch')
+            res = await intake.process_text(text, source='telegram')
+            await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+            return
+        elif 0.6 <= confidence < 0.9 and intent == 'expense':
+            # RECAP confirmation path
+            logger.info('[ROUTE] recap confirm branch')
+            await send_reply(update, f"我聽到似係：{rewritten}。我幫你做咗，如果唔啱話我知。")
+            return
+        elif intent == 'student' and confidence >= 0.7:
+            # student query dispatch
+            logger.info('[ROUTE] student dispatch')
+            # call student handlers in jarvis.student
+            try:
+                from jarvis.student import find_student, log_lesson, schedule_next
+                # simple heuristic: if message contains '點' or '近' -> query
+                if '點' in text or '近' in text:
+                    stud_name = text.split()[0]
+                    stud = find_student(stud_name)
+                    await send_reply(update, f"我搵到: {stud}")
+                    return
+            except Exception:
+                logger.exception('[ROUTE] student handler failed')
+            # fallback to intake
+            res = await intake.process_text(text, source='telegram')
+            await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+            return
+        elif confidence < 0.6:
+            # low confidence => general chat
+            logger.info('[ROUTE] low-confidence chat branch')
+            try:
+                from jarvis.chat import chat_reply
+                reply = await chat_reply(text)
+                await send_reply(update, reply)
+                return
+            except Exception:
+                logger.exception('[ROUTE] chat reply failed, fallback to intake')
+                res = await intake.process_text(text, source='telegram')
+                await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+                return
+        else:
+            # default fallback to intake pipeline (covers expense with low confidence etc.)
+            logger.info('[ROUTE] default fallback to intake')
+            res = await intake.process_text(text, source='telegram')
+            await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+            return
+    except Exception:
+        logger.exception('[ROUTE] unexpected error in dispatch')
+        res = await intake.process_text(text, source='telegram')
+        await send_reply(update, res.get('message', '已儲存。') if res.get('ok') else res.get('message','處理失敗。'))
+        return
 
 
 async def on_photo(update: Update, _: ContextTypes.DEFAULT_TYPE):
