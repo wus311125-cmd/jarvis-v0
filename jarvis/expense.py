@@ -53,3 +53,10 @@ def store_expense(db_conn, amount, description, direction='expense'):
     cur = db_conn.cursor()
     cur.execute("INSERT INTO expenses (amount, description, direction) VALUES (?,?,?)", (amount, description, direction))
     db_conn.commit()
+
+    # Also save to chat history so Jarvis can reference recent expense in conversation
+    try:
+        from jarvis.history import save_message
+        save_message(db_conn, 'assistant', f"記低: {direction} ${int(amount) if amount is not None else ''} / {description}")
+    except Exception:
+        pass
