@@ -288,8 +288,7 @@ def _build_system_prompt(recent: List[str], entity_context: str = '') -> str:
     # self-learning rules: when user corrects you, record lesson and execute corrected intent
     system = system + "\n\n【自我學習規則】\n- 當用戶以「唔係」「錯咗」「我係想」「唔啱」等字眼糾正你嘅理解，請呼叫 learn_from_correction 工具記低教訓，並同時執行正確嘅工具。\n- 你可以在一次回應中同時呼叫多個 tools（例如 learn_from_correction 然後 find_student）。\n- 回覆格式：簡短確認學到嘅教訓，然後提供正確結果。例如：\n  「明白，已記住：冇日期時間 = 查詢。sophia 下次上堂：2026-05-06 16:00」\n"
 
-    # Strong response-format enforcement to encourage reliable function-calling
-    system = system + "\n\n【回應格式要求】\n- 如果你決定使用任何 tool，回應必須同時包含一個 'tool_calls' 陣列，陣列每項形如：\n  {\n    \"function\": {\n      \"name\": \"<tool_name>\",\n      \"arguments\": \"<JSON-string-of-arguments>\"\n    }\n  }\n  例如：\n  {\n    \"tool_calls\": [\n      {\"function\": {\"name\": \"find_student\", \"arguments\": \"{\\\"student_name\\\": \\\"sophia\\\"}\"}}\n    ]\n  }\n- arguments 欄位請務必用嚴格 JSON 字串（double quotes），例如 '{\"student_name\": \"sophia\"}'。\n- 若唔需要用 tool，純以 assistant 文字回應即可（廣東話）。\n- 請避免在回應中混雜非結構化工具呼叫描述；要麼給結構化 tool_calls，要麼給 assistant 文字回應。\n"
+    # (no strong response-format enforcement here — keep few-shots + self-learning rules only)
     return system
 
 
