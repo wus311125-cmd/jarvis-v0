@@ -94,7 +94,7 @@ def run_case(text):
     # use asyncio.run to ensure a running event loop on modern Python
     return asyncio.run(on_text(u, None))
 
-cases=['-88 大快活','+3000 陳大文學費','今日好攰','今個月使咗幾多','頭先嗰筆改做 78','陳大文幾時上堂']
+cases=['-88 大快活','+3000 陳大文學費','今日好攰','今個月使咗幾多','頭先嗰筆改做 78','陳大文幾時上堂','頭先嗰筆改做 大家樂','78']
 for c in cases:
     print('\n=== INPUT ===\n', c)
     try:

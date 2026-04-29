@@ -349,7 +349,14 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
                     except Exception:
                         # leave as-is (string) if can't parse
                         pass
-                return {'tool': 'correct_last_entry', 'args': {'field': field, 'new_value': new_value}, 'assistant': None}
+                # Fast-path distilled corrections are treated as high-confidence executes
+                return {
+                    'action': 'execute',
+                    'tool': 'correct_last_entry',
+                    'args': {'field': field, 'new_value': new_value},
+                    'confidence': 0.95,
+                    'assistant': None,
+                }
     except Exception:
         # non-fatal — continue to normal routing
         pass
@@ -504,8 +511,18 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
                         tool_args = ast.literal_eval(tool_args_raw)
                     except Exception:
                         tool_args = {}
-                parsed_calls.append({'tool': tool_name, 'args': tool_args})
-            return {'tool_calls': parsed_calls, 'assistant': None}
+                # extract confidence if present
+                conf = None
+                try:
+                    conf = extract_confidence_from_args(tool_args)
+                except Exception:
+                    conf = None
+                parsed_calls.append({'tool': tool_name, 'args': tool_args, '_confidence': conf})
+            # single-tool convenience: if only one call, return shape suitable for bot.py
+            if len(parsed_calls) == 1:
+                pc = parsed_calls[0]
+                return {'action': 'route_decision', 'tool': pc['tool'], 'args': pc['args'], 'confidence': pc.get('_confidence'), 'assistant': None}
+            return {'action': 'route_decision', 'tool_calls': parsed_calls, 'assistant': None}
         except Exception:
             # fallthrough to other parsing strategies
             pass
@@ -522,7 +539,9 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
                 args = ast.literal_eval(args_raw)
             except Exception:
                 args = {}
-        return {'tool': name, 'args': args, 'assistant': None}
+        conf = extract_confidence_from_args(args)
+        # route decision shape
+        return {'action': 'route_decision', 'tool': name, 'args': args, 'confidence': conf, 'assistant': None}
 
     # else assistant content
     assistant_text = msg.get('content')
@@ -601,7 +620,48 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
             # non-fatal; fall back to returning assistant text
             pass
 
-    return {'tool': None, 'args': None, 'assistant': assistant_text}
+    # No tool chosen by model — return chat action
+    return {'action': 'route_decision', 'tool': None, 'args': None, 'confidence': 0.0, 'assistant': assistant_text}
+
+
+def extract_confidence_from_args(args: dict) -> float | None:
+    """Try to extract a numeric confidence from parsed tool args.
+    Supports keys: '_confidence', 'confidence' (either number or string like '0.8' or 'high').
+    Returns float in [0.0,1.0] or None if not found/parseable.
+    """
+    if not isinstance(args, dict):
+        return None
+    for k in ('_confidence', 'confidence'):
+        if k in args:
+            v = args.get(k)
+            try:
+                if isinstance(v, (int, float)):
+                    return float(v)
+                if isinstance(v, str):
+                    v2 = v.strip().lower()
+                    # map textual confidences
+                    if v2 in ('high', 'hi'):
+                        return 0.9
+                    if v2 in ('medium', 'med'):
+                        return 0.65
+                    if v2 in ('low', 'lo'):
+                        return 0.2
+                    return float(v2)
+            except Exception:
+                return None
+    return None
+
+
+def generate_clarification(user_input: str, suggested_tool: str) -> str:
+    tool_descriptions = {
+        "query_expenses": "查支出記錄",
+        "log_expense": "記一筆帳",
+        "correct_last_entry": "改正上一筆",
+        "find_student": "搵學生資料",
+        "schedule_next_lesson": "排下一堂課",
+    }
+    desc = tool_descriptions.get(suggested_tool, suggested_tool)
+    return f"你係想{desc}，定係同我傾偈？"
 
 
 def execute_tool(tool_name: str, args: dict | None):

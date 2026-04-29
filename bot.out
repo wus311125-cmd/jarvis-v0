@@ -1,0 +1,6 @@
+Traceback (most recent call last):
+  File "/Users/nhp/jarvis-v0/bot.py", line 32, in <module>
+    TOKEN = os.environ["TELEGRAM_BOT_TOKEN"]
+            ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen os>", line 709, in __getitem__
+KeyError: 'TELEGRAM_BOT_TOKEN'

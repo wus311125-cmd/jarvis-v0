@@ -1,0 +1,838 @@
+[
+  {
+    "model": "google/gemini-2.0-flash-001",
+    "cases": [],
+    "error": "HTTP_403: {\"error\":{\"message\":\"This model is not available in your region.\",\"code\":403}}"
+  },
+  {
+    "model": "google/gemini-2.5-flash-preview",
+    "cases": [],
+    "error": "HTTP_400: {\"error\":{\"message\":\"google/gemini-2.5-flash-preview is not a valid model ID\",\"code\":400},\"user_id\":\"user_3A4z7k1OjP5ENaV8dTz7MXp86Zi\"}"
+  },
+  {
+    "model": "deepseek/deepseek-chat-v3-0324",
+    "cases": [
+      {
+        "case_id": "easy_find",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 3.94,
+        "assistant_text": " (需求工具：查詢學生資料同上堂時間)"
+      },
+      {
+        "case_id": "easy_schedule",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "schedule_next_lesson",
+        "args": {
+          "date": "下個禮拜三",
+          "student_name": "sophia",
+          "time": "4pm"
+        },
+        "latency_s": 3.78,
+        "assistant_text": " (R"
+      },
+      {
+        "case_id": "medium_correct",
+        "difficulty": "medium",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "correct_last_entry",
+        "args": {
+          "field": "amount",
+          "new_value": "78"
+        },
+        "latency_s": 3.86,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_ambiguous",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 2.36,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_correction",
+        "difficulty": "hard",
+        "native_tool_call": false,
+        "text_embedded_tc": false,
+        "tool_correct": false,
+        "tool_name": null,
+        "args": {},
+        "latency_s": 5.64,
+        "assistant_text": "你想查邊位學生嘅上堂時間？請提供學生名，等我幫你查詢。"
+      }
+    ],
+    "error": null
+  },
+  {
+    "model": "deepseek/deepseek-v3-0324",
+    "cases": [],
+    "error": "HTTP_400: {\"error\":{\"message\":\"deepseek/deepseek-v3-0324 is not a valid model ID\",\"code\":400},\"user_id\":\"user_3A4z7k1OjP5ENaV8dTz7MXp86Zi\"}"
+  },
+  {
+    "model": "openai/gpt-4.1-mini",
+    "cases": [],
+    "error": "HTTP_403: {\"error\":{\"message\":\"This model is not available in your region.\",\"code\":403}}"
+  },
+  {
+    "model": "openai/gpt-4.1-nano",
+    "cases": [],
+    "error": "HTTP_403: {\"error\":{\"message\":\"This model is not available in your region.\",\"code\":403}}"
+  },
+  {
+    "model": "anthropic/claude-3.5-haiku",
+    "cases": [],
+    "error": "HTTP_403: {\"error\":{\"message\":\"This model is not available in your region.\",\"code\":403}}"
+  },
+  {
+    "model": "openai/gpt-4.1",
+    "cases": [],
+    "error": "HTTP_403: {\"error\":{\"message\":\"This model is not available in your region.\",\"code\":403}}"
+  },
+  {
+    "model": "anthropic/claude-sonnet-4",
+    "cases": [],
+    "error": "HTTP_403: {\"error\":{\"message\":\"This model is not available in your region.\",\"code\":403}}"
+  },
+  {
+    "model": "google/gemini-2.5-pro-preview",
+    "cases": [],
+    "error": "HTTP_403: {\"error\":{\"message\":\"This model is not available in your region.\",\"code\":403}}"
+  },
+  {
+    "model": "meta-llama/llama-4-scout",
+    "cases": [
+      {
+        "case_id": "easy_find",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 2.05,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "easy_schedule",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "schedule_next_lesson",
+        "args": {
+          "date": "下個禮拜三",
+          "student_name": "sophia",
+          "time": "4pm"
+        },
+        "latency_s": 1.75,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "medium_correct",
+        "difficulty": "medium",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "correct_last_entry",
+        "args": {
+          "field": "amount",
+          "new_value": "78"
+        },
+        "latency_s": 1.73,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_ambiguous",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 1.84,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_correction",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": true,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "學生名"
+        },
+        "latency_s": 1.81,
+        "assistant_text": "！你想查詢學生嘅上堂時間，可以用 find_student 工具，請問學生嘅名係？\n\n例如："
+      }
+    ],
+    "error": null
+  },
+  {
+    "model": "meta-llama/llama-4-maverick",
+    "cases": [],
+    "error": "HTTP_404: {\"error\":{\"message\":\"No endpoints found that support tool use. Try disabling \\\"find_student\\\". To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection"
+  },
+  {
+    "model": "qwen/qwen3-235b-a22b",
+    "cases": [
+      {
+        "case_id": "easy_find",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 2.33,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "easy_schedule",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "schedule_next_lesson",
+        "args": {
+          "date": "下個禮拜三",
+          "student_name": "sophia",
+          "time": "4pm"
+        },
+        "latency_s": 4.38,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "medium_correct",
+        "difficulty": "medium",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "correct_last_entry",
+        "args": {
+          "field": "amount",
+          "new_value": "78"
+        },
+        "latency_s": 2.27,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_ambiguous",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 1.94,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_correction",
+        "difficulty": "hard",
+        "native_tool_call": false,
+        "text_embedded_tc": false,
+        "tool_correct": false,
+        "tool_name": null,
+        "args": {},
+        "latency_s": 4.69,
+        "assistant_text": "我需要學生嘅名字先可以查佢嘅上堂時間。可以唔可以提供學生嘅全名？"
+      }
+    ],
+    "error": null
+  },
+  {
+    "model": "mistralai/mistral-medium-3",
+    "cases": [
+      {
+        "case_id": "easy_find",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 1.97,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "easy_schedule",
+        "difficulty": "easy",
+        "native_tool_call": false,
+        "text_embedded_tc": false,
+        "tool_correct": false,
+        "tool_name": null,
+        "args": {},
+        "latency_s": 1.57,
+        "assistant_text": "我哋要定係查詢定係改sophia 嘅上堂時間架？"
+      },
+      {
+        "case_id": "medium_correct",
+        "difficulty": "medium",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "correct_last_entry",
+        "args": {
+          "field": "amount",
+          "new_value": "78"
+        },
+        "latency_s": 3.22,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_ambiguous",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "Sophia"
+        },
+        "latency_s": 1.06,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_correction",
+        "difficulty": "hard",
+        "native_tool_call": false,
+        "text_embedded_tc": false,
+        "tool_correct": false,
+        "tool_name": null,
+        "args": {},
+        "latency_s": 1.06,
+        "assistant_text": "我哋先確認下學生名，請問你想查邊個學生？"
+      }
+    ],
+    "error": null
+  },
+  {
+    "model": "microsoft/phi-4",
+    "cases": [],
+    "error": "HTTP_404: {\"error\":{\"message\":\"No endpoints found that support tool use. Try disabling \\\"find_student\\\". To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection"
+  },
+  {
+    "model": "microsoft/mai-ds-r1",
+    "cases": [],
+    "error": "HTTP_404: {\"error\":{\"message\":\"No endpoints found for microsoft/mai-ds-r1.\",\"code\":404},\"user_id\":\"user_3A4z7k1OjP5ENaV8dTz7MXp86Zi\"}"
+  },
+  {
+    "model": "cohere/command-r-plus-08-2024",
+    "cases": [
+      {
+        "case_id": "easy_find",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 2.15,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "easy_schedule",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "schedule_next_lesson",
+        "args": {
+          "student_name": "sophia",
+          "date": "下個禮旦",
+          "time": "4pm"
+        },
+        "latency_s": 2.87,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "medium_correct",
+        "difficulty": "medium",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "correct_last_entry",
+        "args": {
+          "field": "amount",
+          "new_value": "78"
+        },
+        "latency_s": 1.94,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_ambiguous",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 16.31,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_correction",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "安安"
+        },
+        "latency_s": 1.75,
+        "assistant_text": ""
+      }
+    ],
+    "error": null
+  },
+  {
+    "model": "cohere/command-a",
+    "cases": [],
+    "error": "HTTP_404: {\"error\":{\"message\":\"No endpoints found that support tool use. Try disabling \\\"find_student\\\". To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection"
+  },
+  {
+    "model": "deepseek/deepseek-r1",
+    "cases": [
+      {
+        "case_id": "easy_find",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 6.06,
+        "assistant_text": "我幫你查下 Sophia 嘅上堂時間：\n\n"
+      },
+      {
+        "case_id": "easy_schedule",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "schedule_next_lesson",
+        "args": {
+          "student_name": "sophia",
+          "date": "下個禮拜三",
+          "time": "4pm"
+        },
+        "latency_s": 5.79,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "medium_correct",
+        "difficulty": "medium",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "correct_last_entry",
+        "args": {
+          "field": "amount",
+          "new_value": "78"
+        },
+        "latency_s": 6.23,
+        "assistant_text": "根據你嘅要求，我哋要修改上一筆記錄嘅金額。等我幫你處理：\n\n"
+      },
+      {
+        "case_id": "hard_ambiguous",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 6.94,
+        "assistant_text": "根據查詢，我哋需要搵學生 Sophia 嘅學習進度同上堂時間。等我幫你查下：\n\n"
+      },
+      {
+        "case_id": "hard_correction",
+        "difficulty": "hard",
+        "native_tool_call": false,
+        "text_embedded_tc": false,
+        "tool_correct": false,
+        "tool_name": null,
+        "args": {},
+        "latency_s": 12.08,
+        "assistant_text": "用戶，你想查邊個學生嘅上堂時間？請提供學生全名，等我幫你查詢！例如：「查陳大文幾時上堂」"
+      }
+    ],
+    "error": null
+  },
+  {
+    "model": "deepseek/deepseek-r1-0528",
+    "cases": [
+      {
+        "case_id": "easy_find",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "Sophia"
+        },
+        "latency_s": 6.83,
+        "assistant_text": "睇到你要查 Sophia 嘅上堂時間，等我幫你查下先！\n\n"
+      },
+      {
+        "case_id": "easy_schedule",
+        "difficulty": "easy",
+        "native_tool_call": false,
+        "text_embedded_tc": false,
+        "tool_correct": false,
+        "tool_name": null,
+        "args": {},
+        "latency_s": 9.66,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "medium_correct",
+        "difficulty": "medium",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "correct_last_entry",
+        "args": {
+          "field": "amount",
+          "new_value": "78"
+        },
+        "latency_s": 6.84,
+        "assistant_text": "根據你嘅要求，我哋要修改上一筆記錄嘅金額為$78。等我幫你執行修改操作：\n\n"
+      },
+      {
+        "case_id": "hard_ambiguous",
+        "difficulty": "hard",
+        "native_tool_call": false,
+        "text_embedded_tc": true,
+        "tool_correct": false,
+        "tool_name": null,
+        "args": {},
+        "latency_s": 6.97,
+        "assistant_text": "睇到你想查詢 Sophia 嘅學習進度同埋上堂時間，等我幫你查下先！\n\n嘅function<｜tool▁sep｜>find_student\njson\n{\"name\": \"sophia\"}\n"
+      },
+      {
+        "case_id": "hard_correction",
+        "difficulty": "hard",
+        "native_tool_call": false,
+        "text_embedded_tc": false,
+        "tool_correct": false,
+        "tool_name": null,
+        "args": {},
+        "latency_s": 18.9,
+        "assistant_text": "用戶想查詢學生嘅上堂時間，但冇提供具體學生名。請你講明要查邊個學生，例如：「我想查陳大文幾時上堂」，等我幫你搵資料！"
+      }
+    ],
+    "error": null
+  },
+  {
+    "model": "deepseek/deepseek-chat-v3-0324:free",
+    "cases": [],
+    "error": "HTTP_404: {\"error\":{\"message\":\"No endpoints found for deepseek/deepseek-chat-v3-0324:free.\",\"code\":404},\"user_id\":\"user_3A4z7k1OjP5ENaV8dTz7MXp86Zi\"}"
+  },
+  {
+    "model": "google/gemini-2.5-flash-preview:thinking",
+    "cases": [],
+    "error": "HTTP_400: {\"error\":{\"message\":\"google/gemini-2.5-flash-preview:thinking is not a valid model ID\",\"code\":400},\"user_id\":\"user_3A4z7k1OjP5ENaV8dTz7MXp86Zi\"}"
+  },
+  {
+    "model": "google/gemma-3-27b",
+    "cases": [],
+    "error": "HTTP_400: {\"error\":{\"message\":\"google/gemma-3-27b is not a valid model ID\",\"code\":400},\"user_id\":\"user_3A4z7k1OjP5ENaV8dTz7MXp86Zi\"}"
+  },
+  {
+    "model": "meta-llama/llama-3.3-70b",
+    "cases": [],
+    "error": "HTTP_400: {\"error\":{\"message\":\"meta-llama/llama-3.3-70b is not a valid model ID\",\"code\":400},\"user_id\":\"user_3A4z7k1OjP5ENaV8dTz7MXp86Zi\"}"
+  },
+  {
+    "model": "meta-llama/llama-4-maverick:free",
+    "cases": [],
+    "error": "HTTP_404: {\"error\":{\"message\":\"No endpoints found for meta-llama/llama-4-maverick:free.\",\"code\":404},\"user_id\":\"user_3A4z7k1OjP5ENaV8dTz7MXp86Zi\"}"
+  },
+  {
+    "model": "nvidia/llama-3.1-nemotron-70b",
+    "cases": [],
+    "error": "HTTP_400: {\"error\":{\"message\":\"nvidia/llama-3.1-nemotron-70b is not a valid model ID\",\"code\":400},\"user_id\":\"user_3A4z7k1OjP5ENaV8dTz7MXp86Zi\"}"
+  },
+  {
+    "model": "perplexity/sonar-pro",
+    "cases": [],
+    "error": "HTTP_404: {\"error\":{\"message\":\"No endpoints found that support tool use. Try disabling \\\"find_student\\\". To learn more about provider routing, visit: https://openrouter.ai/docs/guides/routing/provider-selection"
+  },
+  {
+    "model": "amazon/nova-pro-v1",
+    "cases": [
+      {
+        "case_id": "easy_find",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": true,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 1.88,
+        "assistant_text": "<thinking> 根據用戶意圖，我需要查詢 sophia 嘅上堂時間。我會使用 find_student 工具去查詢 sophia 嘅資料。 </thinking>\n"
+      },
+      {
+        "case_id": "easy_schedule",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": true,
+        "tool_correct": true,
+        "tool_name": "schedule_next_lesson",
+        "args": {
+          "date": "下個禮拜三",
+          "student_name": "sophia",
+          "time": "4pm"
+        },
+        "latency_s": 1.92,
+        "assistant_text": "<thinking> 用戶要求安排下次上堂時間，並提供了日期、時間和學生名。根據指示，我需要使用 schedule_next_lesson 工具來安排下次上堂時間。 </thinking>\n"
+      },
+      {
+        "case_id": "medium_correct",
+        "difficulty": "medium",
+        "native_tool_call": true,
+        "text_embedded_tc": true,
+        "tool_correct": true,
+        "tool_name": "correct_last_entry",
+        "args": {
+          "field": "amount",
+          "new_value": "78"
+        },
+        "latency_s": 1.37,
+        "assistant_text": "<thinking> 用戶要求修改上一筆記錄，將金額改為 78。我需要使用 correct_last_entry 工具，並指定 field 為 amount，new_value 為 78。 </thinking>\n"
+      },
+      {
+        "case_id": "hard_ambiguous",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": true,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "Sophia"
+        },
+        "latency_s": 1.19,
+        "assistant_text": "<thinking> 我需要查詢 Sophia 學到邊，所以我會使用 find_student 工具去查詢她嘅資料同上堂時間。 </thinking>\n"
+      },
+      {
+        "case_id": "hard_correction",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": true,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "佢"
+        },
+        "latency_s": 2.24,
+        "assistant_text": "<thinking> 用戶想查某個學生幾時上堂，所以我需要用 find_student 工具去查詢學生資料同上堂時間。 </thinking>\n"
+      }
+    ],
+    "error": null
+  },
+  {
+    "model": "mistralai/mistral-small-3.1-24b",
+    "cases": [],
+    "error": "HTTP_400: {\"error\":{\"message\":\"mistralai/mistral-small-3.1-24b is not a valid model ID\",\"code\":400},\"user_id\":\"user_3A4z7k1OjP5ENaV8dTz7MXp86Zi\"}"
+  },
+  {
+    "model": "mistralai/codestral-mamba",
+    "cases": [],
+    "error": "HTTP_404: {\"error\":{\"message\":\"No endpoints found for mistralai/codestral-mamba.\",\"code\":404},\"user_id\":\"user_3A4z7k1OjP5ENaV8dTz7MXp86Zi\"}"
+  },
+  {
+    "model": "qwen/qwen3-30b-a3b",
+    "cases": [
+      {
+        "case_id": "easy_find",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 4.29,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "easy_schedule",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "schedule_next_lesson",
+        "args": {
+          "student_name": "sophia",
+          "date": "下個禮拜三",
+          "time": "4pm"
+        },
+        "latency_s": 4.98,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "medium_correct",
+        "difficulty": "medium",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "correct_last_entry",
+        "args": {
+          "field": "amount",
+          "new_value": "78"
+        },
+        "latency_s": 5.04,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_ambiguous",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 4.35,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_correction",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "佢"
+        },
+        "latency_s": 7.72,
+        "assistant_text": ""
+      }
+    ],
+    "error": null
+  },
+  {
+    "model": "qwen/qwen3-32b",
+    "cases": [
+      {
+        "case_id": "easy_find",
+        "difficulty": "easy",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "sophia"
+        },
+        "latency_s": 2.79,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "easy_schedule",
+        "difficulty": "easy",
+        "native_tool_call": false,
+        "text_embedded_tc": false,
+        "tool_correct": false,
+        "tool_name": null,
+        "args": {},
+        "latency_s": 3.51,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "medium_correct",
+        "difficulty": "medium",
+        "native_tool_call": false,
+        "text_embedded_tc": false,
+        "tool_correct": false,
+        "tool_name": null,
+        "args": {},
+        "latency_s": 3.59,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_ambiguous",
+        "difficulty": "hard",
+        "native_tool_call": true,
+        "text_embedded_tc": false,
+        "tool_correct": true,
+        "tool_name": "find_student",
+        "args": {
+          "name": "Sophia"
+        },
+        "latency_s": 3.02,
+        "assistant_text": ""
+      },
+      {
+        "case_id": "hard_correction",
+        "difficulty": "hard",
+        "native_tool_call": false,
+        "text_embedded_tc": false,
+        "tool_correct": false,
+        "tool_name": null,
+        "args": {},
+        "latency_s": 6.13,
+        "assistant_text": "您想查詢邊個學生嘅上堂時間呢？麻煩提供學生姓名，"
+      }
+    ],
+    "error": null
+  },
+  {
+    "model": "openai/o4-mini",
+    "cases": [],
+    "error": "HTTP_403: {\"error\":{\"message\":\"This model is not available in your region.\",\"code\":403}}"
+  },
+  {
+    "model": "anthropic/claude-sonnet-4",
+    "cases": [],
+    "error": "HTTP_403: {\"error\":{\"message\":\"This model is not available in your region.\",\"code\":403}}"
+  },
+  {
+    "model": "qwen/qwq-32b",
+    "cases": [],
+    "error": "HTTP_404: {\"error\":{\"message\":\"No endpoints found for qwen/qwq-32b.\",\"code\":404},\"user_id\":\"user_3A4z7k1OjP5ENaV8dTz7MXp86Zi\"}"
+  }
+]

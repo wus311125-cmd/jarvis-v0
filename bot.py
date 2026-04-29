@@ -76,6 +76,25 @@ def append_to_daily(role: str, text: str):
         f.write(f"\n**[{ts}] {role}**: {text}\n")
 
 
+async def _log_meta_router_decision_async(update, last_route_decision):
+    """Best-effort: call meta_router.should_distill for the user's conversation and log the decision.
+    This is non-blocking and intended to be called after successful tool executions only.
+    """
+    try:
+        from meta_router import should_distill, log_distill_decision
+        try:
+            from memory import memory as conv_memory
+            user_id = str(update.effective_user.id)
+            conv_msgs = conv_memory.get_messages(user_id)
+        except Exception:
+            conv_msgs = []
+        decision = should_distill(conv_msgs, last_route_decision=last_route_decision)
+        # log length and decision
+        log_distill_decision(decision, len(conv_msgs))
+    except Exception:
+        logger.exception('[META_ROUTER] failed to log distill decision')
+
+
 def format_image_confirmation(result: dict) -> str:
     """緣一語氣回覆 — 廣東話口語 + emoji"""
     try:
@@ -302,61 +321,47 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
         # pass recap object (rewritten + distilled) so router can see distilled_fields
         recap_obj = {'rewritten_text': rewritten, 'distilled_fields': distilled}
         route_res = router_route(recap_obj, entities_res.get('entity_context',''), recent_ctx, history=history_msgs)
-        # New: normalize potential multiple tool calls returned by router.route
-        calls = []
-        if isinstance(route_res, dict) and route_res.get('tool_calls'):
-            calls = route_res.get('tool_calls')
-        elif isinstance(route_res, dict) and route_res.get('tool'):
-            calls = [{'tool': route_res.get('tool'), 'args': route_res.get('args') or {}}]
-        if calls:
-            executed_results = []
-            try:
-                from router import execute_tool
-                for c in calls:
-                    tool = c.get('tool')
-                    args = c.get('args') or {}
-                    logger.info(f"[ROUTE] executing tool %s with args %s", tool, args)
+        # route_res is expected to be a route_decision shaped dict from router.route
+        # shape: {'action':'route_decision', 'tool':..., 'args':..., 'confidence':...}
+        try:
+            if isinstance(route_res, dict) and route_res.get('action') == 'route_decision':
+                tool = route_res.get('tool')
+                args = route_res.get('args') or {}
+                conf = route_res.get('confidence')
+                # fallback if model didn't provide numeric confidence
+                if conf is None:
+                    conf = 0.9
+                logger.info('[ROUTE] suggested tool=%s conf=%s args=%s', tool, conf, args)
+                # Confidence gating
+                if tool and conf >= 0.8:
+                    # execute directly
+                    from router import execute_tool
                     if tool == 'learn_from_correction':
                         from learning import learn_from_correction as _lfc
                         res = _lfc(args.get('original_input',''), args.get('correct_tool',''), args.get('lesson',''), args.get('wrong_tool'))
-                        executed_results.append({'tool': tool, 'result': res})
-                        continue
-                    # execute normal tool
+                        await send_reply(update, str(res))
+                        return
                     res = await asyncio.to_thread(execute_tool, tool, args)
-                    executed_results.append({'tool': tool, 'result': res})
-            except Exception:
-                logger.exception('[ROUTE] tool execution failed')
-                await send_reply(update, '工具執行失敗。')
-                return
-            # format replies
-            replies = []
-            for er in executed_results:
-                t = er.get('tool')
-                r = er.get('result')
-                if t == 'learn_from_correction' and isinstance(r, dict) and r.get('message'):
-                    replies.append(r.get('message'))
-                elif t in ('find_student','query_student'):
-                    if not r:
-                        replies.append('搵唔到該學生。')
-                    else:
-                        name = r.get('name') if isinstance(r, dict) else str(r)
-                        replies.append(f'學生資料：{name}')
-                elif t == 'list_students':
-                    if isinstance(r, list):
-                        names = [s.get('name','') for s in r]
-                        replies.append('學生清單：\n' + '\n'.join(names))
-                    else:
-                        replies.append(str(r))
-                elif t == 'new_student':
-                    replies.append(str(r))
-                elif t in ('log_lesson','update_student_progress','schedule_next_lesson','schedule_next'):
-                    replies.append(str(r))
-                elif t in ('record_expense','log_expense'):
-                    replies.append(str(r))
+                    await send_reply(update, str(res))
+                    return
+                elif tool and conf >= 0.5:
+                    # clarify with user
+                    from router import generate_clarification
+                    msg = generate_clarification(rewritten, tool)
+                    # store this clarification as assistant reply so follow-up can reference
+                    await send_reply(update, msg)
+                    # note: follow-up user reply will re-enter routing with the same recent/history
+                    return
                 else:
-                    replies.append(str(r))
-            await send_reply(update, '\n'.join(replies))
-            return
+                    # low confidence -> treat as chat
+                    from jarvis.chat import chat_reply
+                    chatr = chat_reply(text)
+                    await send_reply(update, chatr)
+                    return
+            # else: fallback to legacy behavior if router returned tool_calls or tool field
+            # (handled below in original dispatch)
+        except Exception:
+            logger.exception('[ROUTE] route decision handling failed, falling back to legacy dispatch')
     except Exception:
         logger.exception('[ROUTE] router_route failed, fallback to intake')
         route_res = {'tool': None, 'args': None, 'assistant': None}
@@ -434,10 +439,13 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                 }
                 rowid = await asyncio.to_thread(expense.store_expense, rec)
                 await send_reply(update, expense.format_expense_confirmation(rec))
+                # meta-router: log decision after successful tool execution
+                await _log_meta_router_decision_async(update, route_res)
                 return
             elif tool in ('record_income', 'log_income'):
                 # simple acknowledge for income
                 await send_reply(update, f"已記收入：{args.get('amount')} {args.get('currency','HKD')} · {args.get('description','')}")
+                await _log_meta_router_decision_async(update, route_res)
                 return
             elif tool in ('query_student','find_student','list_students','new_student','update_student_progress','log_lesson','schedule_next_lesson','schedule_next'):
                 # Centralized student tools dispatch via router.execute_tool
@@ -454,37 +462,46 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                     if tool in ('query_student','find_student'):
                         if not res:
                             await send_reply(update, f"搵唔到 {args.get('name') or args.get('student_name','')}。")
+                            await _log_meta_router_decision_async(update, route_res)
                         else:
                             # res expected: {'id','name','properties'}
                             name = res.get('name') if isinstance(res, dict) else str(res)
                             await send_reply(update, f"學生資料：{name}")
+                            await _log_meta_router_decision_async(update, route_res)
                         return
 
                     if tool == 'list_students':
                         if not res:
                             await send_reply(update, "學生清單：冇學生。")
+                            await _log_meta_router_decision_async(update, route_res)
                         else:
                             if isinstance(res, list):
                                 names = [s.get('name','') for s in res]
                                 await send_reply(update, "學生清單：\n" + "\n".join(names))
+                                await _log_meta_router_decision_async(update, route_res)
                             else:
                                 await send_reply(update, str(res))
+                                await _log_meta_router_decision_async(update, route_res)
                         return
 
                     if tool == 'new_student':
                         # new_student returns page_id/lesson_db_id or error dict
                         if isinstance(res, dict) and res.get('page_id'):
                             await send_reply(update, f"已新增學生：{res.get('page_id')}")
+                            await _log_meta_router_decision_async(update, route_res)
                         else:
                             await send_reply(update, str(res))
+                            await _log_meta_router_decision_async(update, route_res)
                         return
 
                     if tool in ('update_student_progress','log_lesson'):
                         await send_reply(update, str(res))
+                        await _log_meta_router_decision_async(update, route_res)
                         return
 
                     if tool in ('schedule_next_lesson','schedule_next'):
                         await send_reply(update, str(res))
+                        await _log_meta_router_decision_async(update, route_res)
                         return
 
                 except Exception:
@@ -503,6 +520,7 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                         rows = c.execute(q, (today,)).fetchall()
                         total = sum([r[0] for r in rows]) if rows else 0
                         await send_reply(update, f"今日共 {total} HKD，{len(rows)} 筆。")
+                        await _log_meta_router_decision_async(update, route_res)
                         conn.close()
                         return
                 except Exception:
@@ -530,6 +548,7 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                                 conn.commit()
                                 conn.close()
                                 await send_reply(update, f'已更新最近一筆金額為 {amt}。')
+                                await _log_meta_router_decision_async(update, route_res)
                                 return
                             except Exception:
                                 conn.close()
@@ -545,6 +564,7 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                     from jarvis.chat import chat_reply
                     reply = await chat_reply(args.get('message',''))
                     await send_reply(update, reply)
+                    await _log_meta_router_decision_async(update, route_res)
                     return
                 except Exception:
                     logger.exception('[ROUTE] chat_reply failed')
@@ -877,6 +897,7 @@ async def send_reply(update, text: str):
         logger.warning("leak-linter error: %s", e)
         cleaned = text
     await update.message.reply_text(cleaned)
+    return
 
 
 
