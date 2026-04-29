@@ -153,14 +153,22 @@ TOOLS = [
         "type": "function",
         "function": {
             "name": "correct_last_entry",
-            "description": "修改最近一筆記錄。當用戶講「改做 X」「改為 X」「改返 X」「頭先嗰筆改做 X」等，請呼叫此 tool 並判斷要改嘅欄位與新值。",
+            "description": "修正最近一筆記錄（trigger 範例：'頭先嗰筆改做 X'、'上一筆改做 X'、'啱啱嗰個改返 X'、'改做 X'、'改返 X'、'改正 X'；英文範例：'change last entry to X', 'correct last entry to X'）。當用戶講法暗示要修正上一筆時，呼叫此 tool 並填入 field 與 new_value。數字值代表金額(amount)，文字代表商戶(merchant) 或備註(note)。",
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "field": {"type": "string", "description": "要改嘅欄位。LLM 請根據用戶講法判斷：若用戶講數字 → field='amount'；講店名或文字 → field='merchant'；講類別 → field='category'；講日期 → field='date'；講備註或文字 → field='note'。"},
-                    "new_value": {"type": "string", "description": "新值。根據用戶原話提取：數字請傳 number（例如 78），文字請傳 string（例如 '大家樂'）。"}
+                    "field": {
+                        "type": "string",
+                        "description": "要修改哪一個欄位。若用戶講的是數字（金額）則選 'amount'；若講商戶或文字則選 'merchant'；其他可選 'category','date','note'。",
+                        "enum": ["amount", "merchant", "category", "date", "note"]
+                    },
+                    "new_value": {
+                        "type": ["number", "string"],
+                        "description": "新值。若為金額 (數字)，請傳 number（例：78）；若為文字（商戶名或備註），請傳 string（例：'大家樂'）。"
+                    }
                 },
-                "required": ["field", "new_value"]
+                "required": ["field", "new_value"],
+                "additionalProperties": False
             }
         }
     }
