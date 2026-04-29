@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "jarvis-agents": {
+      "command": "python",
+      "args": ["/Users/nhp/jarvis-v0/mcp-agents/server.py"],
+      "env": {}
+    }
+  }
+}
