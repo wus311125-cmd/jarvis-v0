@@ -1,7 +1,9 @@
 import os
 import json
 import ast
-import requests
+import httpx
+import os
+import logging
 import sqlite3
 import re
 from datetime import datetime, timedelta
@@ -11,7 +13,11 @@ from skills import intake
 
 OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')
 OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
-MODEL = os.environ.get('OPENROUTER_MODEL', 'gpt-5-mini')
+# Use OpenRouter-compatible model id for GPT-4.1-mini
+# Fallback to an OpenRouter-available model to avoid region-restricted IDs
+# Prefer OpenRouter-supported function-calling model; fallback order managed via env
+# Use S51 benchmark chosen model (deepseek)
+MODEL = "deepseek/deepseek-chat-v3-0324"
 
 
 TOOLS = [
@@ -396,10 +402,74 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
         "temperature": 0.0,
     }
 
-    headers = {"Authorization": f"Bearer {OPENROUTER_API_KEY}", "Content-Type": "application/json"}
+    # logging for router
+    LOG_DIR = os.path.expanduser(os.getenv('JARVIS_LOG_DIR', '~/jarvis-v0/logs'))
+    os.makedirs(LOG_DIR, exist_ok=True)
+    router_logger = logging.getLogger('distill')
+
+    # convenience helper to write NDJSON distill entries to distill.log
+    def write_distill(entry: dict):
+        try:
+            path = os.path.join(LOG_DIR, 'distill.log')
+            # ensure basic fields
+            entry.setdefault('ts', __import__('datetime').datetime.utcnow().isoformat())
+            entry.setdefault('source', 'router')
+            with open(path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+                f.flush()
+        except Exception:
+            # best-effort only
+            try:
+                router_logger.info(json.dumps({"ts": __import__('datetime').datetime.utcnow().isoformat(), "layer": "distill_write_fail"}))
+            except Exception:
+                pass
+
+    # Include recommended headers for OpenRouter (Referer + X-Title) per S51 benchmark
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Content-Type": "application/json",
+        "Referer": "https://openrouter.ai",
+        "X-Title": "jarvis-router"
+    }
+
+    # log a lightweight payload summary (no tokens)
+    try:
+        entry = {"layer": "router_payload", "model": MODEL, "message_count": len(messages), "tool_count": len(TOOLS)}
+        write_distill(entry)
+    except Exception:
+        pass
     # Debug logs to help E2E diagnose function-calling issues
-    resp = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=15)
-    resp.raise_for_status()
+    # Use httpx POST to match benchmark behavior (non-streaming, consistent timeout)
+    resp = httpx.post(
+        OPENROUTER_URL,
+        headers=headers,
+        json={
+            **payload,
+            # align with benchmark: include max_tokens and slightly higher temperature
+            "max_tokens": payload.get("max_tokens", 200),
+            "temperature": payload.get("temperature", 0.1),
+        },
+        timeout=30.0,
+    )
+    # Dump raw response for debugging function-calling format mismatches
+        try:
+            raw_json = resp.json()
+            write_distill({"layer": "router_raw_response", "model": MODEL, "raw": raw_json})
+            if not raw_json:
+                write_distill({"layer": "router_raw_response_empty", "status": resp.status_code, "headers": dict(resp.headers), "text_snippet": resp.text[:8000]})
+        except Exception as _e:
+            try:
+                write_distill({"layer": "router_raw_text", "text_snippet": resp.text[:8000]})
+            except Exception:
+                write_distill({"layer": "router_raw_unreadable"})
+    # handle HTTP status similar to benchmark
+    if resp.status_code == 451:
+        raise RuntimeError('BLOCKED_HK (451)')
+    if resp.status_code == 429:
+        raise RuntimeError('RATE_LIMITED (429)')
+    if resp.status_code != 200:
+        raise RuntimeError(f'HTTP_{resp.status_code}: {resp.text[:200]}')
+
     data = resp.json()
     # no-op: remove debug prints in production
     choices = data.get('choices') or []

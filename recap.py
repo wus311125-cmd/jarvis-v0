@@ -1,8 +1,40 @@
 import json
 import re
+import os
+import logging
 from typing import List, Dict, Any, Optional
 
 import classify
+
+# ensure logs dir
+LOG_DIR = os.path.expanduser(os.getenv('JARVIS_LOG_DIR', '~/jarvis-v0/logs'))
+os.makedirs(LOG_DIR, exist_ok=True)
+
+# structured JSON logger for distillation steps
+logger = logging.getLogger('distill')
+if not logger.handlers:
+    from logging.handlers import RotatingFileHandler
+    fh = RotatingFileHandler(os.path.join(LOG_DIR, 'distill.log'), maxBytes=5_000_000, backupCount=3, encoding='utf-8')
+    formatter = logging.Formatter('%(message)s')
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
+    logger.setLevel(logging.INFO)
+
+
+# helper to write NDJSON distill entries (keeps same log file as router)
+def write_distill(entry: dict):
+    try:
+        path = os.path.join(LOG_DIR, 'distill.log')
+        entry.setdefault('ts', __import__('datetime').datetime.utcnow().isoformat())
+        entry.setdefault('source', 'recap')
+        with open(path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + '\n')
+            f.flush()
+    except Exception:
+        try:
+            logger.info(json.dumps({"ts": __import__('datetime').datetime.utcnow().isoformat(), "layer": "distill_write_fail", "source": "recap"}))
+        except Exception:
+            pass
 
 
 def recap_rewrite(text: str, entity_context: str = '', recent_turns: Optional[List[str]] = None) -> Dict[str, Any]:
@@ -24,12 +56,23 @@ def recap_rewrite(text: str, entity_context: str = '', recent_turns: Optional[Li
     # Default output
     out: Dict[str, Any] = {"rewritten_text": text, "distilled_fields": None}
 
+    # log input
+    try:
+        write_distill({"layer": "input", "input": text, "entity_context": entity_context})
+    except Exception:
+        pass
+
     # 1) Try to produce a rewritten intent using existing classify.rewrite_intent if available
     try:
         # classify.rewrite_intent may call remote LLM; guard failures
         rewritten = classify.rewrite_intent(text, entity_context, recent_turns)
         if isinstance(rewritten, str) and rewritten.strip():
             out["rewritten_text"] = rewritten
+        # log rewrite output
+        try:
+            write_distill({"layer": "rewrite_output", "input": text, "output": out["rewritten_text"]})
+        except Exception:
+            pass
     except Exception:
         # fallback: keep original
         pass
@@ -49,6 +92,10 @@ def recap_rewrite(text: str, entity_context: str = '', recent_turns: Optional[Li
             if num.is_integer():
                 num = int(num)
             out["distilled_fields"] = {"field": "amount", "new_value": num}
+            try:
+                write_distill({"layer": "distilled_fields", "input": text, "distilled": out["distilled_fields"]})
+            except Exception:
+                pass
             return out
         except Exception:
             pass
@@ -72,6 +119,10 @@ def recap_rewrite(text: str, entity_context: str = '', recent_turns: Optional[Li
                     pass
         # otherwise treat as merchant/merchant name
         out["distilled_fields"] = {"field": "merchant", "new_value": candidate}
+        try:
+            write_distill({"layer": "distilled_fields", "input": text, "distilled": out["distilled_fields"]})
+        except Exception:
+            pass
         return out
 
     # simple direct numeric message e.g. "78" or "改 78"
@@ -82,6 +133,10 @@ def recap_rewrite(text: str, entity_context: str = '', recent_turns: Optional[Li
             if val.is_integer():
                 val = int(val)
             out["distilled_fields"] = {"field": "amount", "new_value": val}
+            try:
+                write_distill({"layer": "distilled_fields", "input": text, "distilled": out["distilled_fields"]})
+            except Exception:
+                pass
             return out
         except Exception:
             pass
