@@ -83,6 +83,16 @@ def find_api_key() -> Optional[str]:
     p1 = os.path.expanduser('~/.secrets/openrouter_key')
     if os.path.exists(p1):
         return open(p1).read().strip()
+    # check ~/.secrets/openrouter.env (KEY=VALUE format)
+    p1b = os.path.expanduser('~/.secrets/openrouter.env')
+    if os.path.exists(p1b):
+        try:
+            for line in open(p1b, 'r', encoding='utf-8'):
+                line = line.strip()
+                if line.startswith('OPENROUTER_API_KEY='):
+                    return line.split('=', 1)[1].strip().strip('"')
+        except Exception:
+            pass
     # check ~/jarvis-v0/.env
     p2 = os.path.expanduser(os.path.join(ROOT, '.env'))
     if os.path.exists(p2):
