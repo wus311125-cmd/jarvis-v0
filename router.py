@@ -300,7 +300,9 @@ def detect_mode(chat_history: list[dict] | None, window: int = 5) -> str:
             return 'chat'
         # rows come newest->oldest; reverse to oldest->newest
         rows = list(reversed(rows))
-        total = 0
+        # Count over all rows (including ones without explicit tool_used) so
+        # that chat/no-tool rows contribute to the distribution.
+        total = len(rows)
         counts = {k: 0 for k in MODE_TOOL_AFFINITY.keys()}
         # check most recent for correction priority
         last_row = rows[-1]
@@ -318,18 +320,24 @@ def detect_mode(chat_history: list[dict] | None, window: int = 5) -> str:
                 tool_used = r[2]
             except Exception:
                 tool_used = None
-            if not tool_used:
-                continue
-            total += 1
-            for mode, tools in MODE_TOOL_AFFINITY.items():
-                if tool_used in tools:
-                    counts[mode] = counts.get(mode, 0) + 1
-                    break
+            # If tool_used present, attribute to its mode; otherwise treat as chat
+            if tool_used:
+                attributed = False
+                for mode, tools in MODE_TOOL_AFFINITY.items():
+                    if tool_used in tools:
+                        counts[mode] = counts.get(mode, 0) + 1
+                        attributed = True
+                        break
+                if not attributed:
+                    # unknown tool -> treat as chat fallback
+                    counts['chat'] = counts.get('chat', 0) + 1
+            else:
+                counts['chat'] = counts.get('chat', 0) + 1
 
         if total == 0:
             return 'chat'
 
-        # determine dominant
+        # determine dominant over all rows
         dominant_mode, dominant_count = max(counts.items(), key=lambda kv: kv[1])
         if dominant_count / total >= 0.6:
             return dominant_mode
@@ -523,6 +531,104 @@ def _build_system_prompt(recent: List[str], entity_context: str = '') -> str:
     return system
 
 
+# ------------------ distill.log read-back loop (dynamic few-shots) ------------------
+from pathlib import Path
+from collections import deque
+
+DISTILL_LOG_PATH = Path.home() / "jarvis-v0" / "logs" / "distill.log"
+FEW_SHOTS_PATH = Path.home() / "jarvis-v0" / "few_shots.json"
+MAX_TOTAL_SHOTS = 20
+
+
+def read_recent_distill(n: int = 10) -> list[dict]:
+    """Read last n lines from distill.log (NDJSON). Return list of parsed dicts.
+
+    Errors are non-fatal and produce an empty list.
+    """
+    if not DISTILL_LOG_PATH.exists():
+        return []
+    try:
+        with open(DISTILL_LOG_PATH, 'r', encoding='utf-8') as f:
+            tail = deque(f, maxlen=n)
+        out = []
+        for line in tail:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+                out.append(obj)
+            except Exception:
+                # skip malformed lines
+                continue
+        return out
+    except Exception:
+        return []
+
+
+def distill_to_few_shots(entries: list[dict]) -> list[dict]:
+    """Convert distill entries to few-shot example dicts and dedupe by input.
+
+    Expected output keys: input, tool, confidence, note
+    """
+    seen = {}
+    for e in entries:
+        inp = (e.get('input') or e.get('user_input') or e.get('text') or '').strip()
+        if not inp:
+            continue
+        tool = e.get('tool') or e.get('suggested_tool') or None
+        conf = None
+        try:
+            conf = float(e.get('confidence')) if e.get('confidence') is not None else None
+        except Exception:
+            conf = None
+        # later (newer) entries overwrite older ones because entries are ordered oldest->newest
+        seen[inp] = {"input": inp, "tool": tool, "confidence": conf, "note": "distill.log 歷史 pattern"}
+    return list(seen.values())
+
+
+def load_static_few_shots() -> list[dict]:
+    try:
+        if not FEW_SHOTS_PATH.exists():
+            return []
+        with open(FEW_SHOTS_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+
+def merge_few_shots(static: list[dict], dynamic: list[dict], budget: int = MAX_TOTAL_SHOTS) -> list[dict]:
+    """Merge static and dynamic few-shots with dedupe and budget rules.
+
+    Static examples are prioritized (cap at budget//2), dynamic fill remaining.
+    """
+    static_inputs = {s.get('input','').strip() for s in static}
+    merged = static[: budget // 2]
+    remaining = budget - len(merged)
+    for d in dynamic:
+        if remaining <= 0:
+            break
+        if d.get('input','').strip() in static_inputs:
+            continue
+        merged.append(d)
+        remaining -= 1
+    return merged
+
+
+def build_few_shot_prompt(shots: list[dict]) -> str:
+    if not shots:
+        return ''
+    lines = ["以下係過往 routing 參考例子："]
+    for s in shots:
+        inp = s.get('input','')
+        tool = s.get('tool') or '（冇用工具）'
+        conf = s.get('confidence', '?')
+        lines.append(f'• 輸入「{inp}」→ {tool}（信心 {conf}）')
+    return "\n".join(lines)
+
+# --------------------------------------------------------------------------------------
+
+
 def route(text: str, entity_context: str = '', recent: List[str] = None, history: List[Dict[str,str]] = None) -> Dict[str, Any]:
     """Send user text to OpenRouter with function definitions.
     Returns: { 'tool': name | None, 'args': dict | None, 'assistant': str | None }
@@ -563,16 +669,37 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
     except Exception:
         # non-fatal — continue to normal routing
         pass
-    # Detect conversational mode from recent chat history and inject a short mode-specific
-    # system prompt to bias the LLM routing behavior (CG-3 memory-informed gating).
+    # Detect conversational mode from recent chat history and prepare mode prompt
     try:
         mode = detect_mode(None, window=5)
     except Exception:
         mode = 'mixed'
     mode_prompt = get_mode_prompt(mode)
+
+    # Build base system prompt
     system = _build_system_prompt(recent)
+
+    # Read recent distill.log entries and build dynamic few-shot prompt (if any)
+    try:
+        distill_entries = read_recent_distill(n=10)
+        dynamic_shots = distill_to_few_shots(distill_entries) if distill_entries else []
+        static_shots = load_static_few_shots()
+        merged_shots = merge_few_shots(static_shots, dynamic_shots)
+        few_shot_prompt = build_few_shot_prompt(merged_shots)
+        # optional debug trace: write a lightweight summary to distill.log for visibility
+        try:
+            if merged_shots:
+                write_distill({'layer': 'few_shot_inject', 'count': len(merged_shots), 'source': 'distill_readback'})
+        except Exception:
+            pass
+        if few_shot_prompt:
+            system = system + "\n\n" + few_shot_prompt
+    except Exception:
+        # non-fatal — continue without dynamic few-shots
+        pass
+
+    # Append mode-specific short prompt after few-shot prompt (so mode prompt is last)
     if mode_prompt:
-        # append mode prompt at the end of system prompt (before tool descriptions)
         system = system + "\n\n" + mode_prompt
     messages = [
         {"role": "system", "content": system},

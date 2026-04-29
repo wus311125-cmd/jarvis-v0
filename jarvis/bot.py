@@ -42,13 +42,17 @@ def route_text(db_conn, text, llm_client=None):
             parsed = parse(text, llm_client=llm_client)
             store_expense(db_conn, parsed.get('amount'), parsed.get('description'), parsed.get('direction'))
             reply = format_reply(parsed.get('amount'), parsed.get('description'), parsed.get('direction'))
+            tool_used = 'log_expense'
         elif intent == 'student':
             # for v0.1, route to chat/student handler: use chat_reply fallback
             reply = chat_reply(text)
+            tool_used = 'find_student'
         else:
             reply = chat_reply(text)
+            tool_used = None
         try:
-            save_message(db_conn, 'assistant', reply, tool_used=None)
+            # persist assistant reply and the tool used for downstream mode detection
+            save_message(db_conn, 'assistant', reply, tool_used=tool_used)
         except Exception:
             pass
         return reply
@@ -65,7 +69,13 @@ def route_text(db_conn, text, llm_client=None):
             chatr = chat_reply(text)
             full_reply = chatr + '\n' + '我估你係想做上面嘅事，我已執行。如果唔啱話我知。'
         try:
-            save_message(db_conn, 'assistant', full_reply, tool_used=None)
+            # mark the tool used when applicable
+            if intent == 'expense':
+                save_message(db_conn, 'assistant', full_reply, tool_used='log_expense')
+            elif intent == 'student':
+                save_message(db_conn, 'assistant', full_reply, tool_used='find_student')
+            else:
+                save_message(db_conn, 'assistant', full_reply, tool_used=None)
         except Exception:
             pass
         return full_reply

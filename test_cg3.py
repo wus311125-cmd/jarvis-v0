@@ -12,6 +12,13 @@ from pathlib import Path
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
+import types
+import sys as _sys
+# router.py imports httpx at module import time; test env may not have it installed.
+# Provide a minimal stub so we can import router for the logic we need without httpx.
+if 'httpx' not in _sys.modules:
+    _sys.modules['httpx'] = types.SimpleNamespace(post=lambda *a, **k: None)
+
 from router import detect_mode, adjust_threshold
 
 DB_PATH = HERE / "jarvis.db"

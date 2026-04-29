@@ -472,3 +472,7 @@ INFO:__main__:Starting sync (dry_run=False)
 INFO:__main__:Found 0 intake rows to consider
 INFO:__main__:Found 0 expense rows to consider
 INFO:__main__:Sync complete (dry_run=False)
+INFO:__main__:Starting sync (dry_run=False)
+INFO:__main__:Found 0 intake rows to consider
+INFO:__main__:Found 0 expense rows to consider
+INFO:__main__:Sync complete (dry_run=False)

@@ -218,6 +218,7 @@ sys.path.insert(0, os.path.expanduser('~/oh-my-opencode/skills/leak-linter'))
 from linter import lint
 # import skills
 from skills import intake, expense
+from jarvis.history import save_message as save_chat_message
 import sqlite3
 import classify
 import json, hashlib
@@ -452,13 +453,28 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                     'source': 'telegram',
                 }
                 rowid = await asyncio.to_thread(expense.store_expense, rec)
-                await send_reply(update, expense.format_expense_confirmation(rec))
+                msg = expense.format_expense_confirmation(rec)
+                await send_reply(update, msg)
+                # persist assistant reply + tool_used into chat_history for mode detection
+                try:
+                    conn = sqlite3.connect(str(intake.DB_PATH))
+                    save_chat_message(conn, 'assistant', msg, tool_used='log_expense')
+                    conn.close()
+                except Exception:
+                    logger.exception('failed to save chat_history tool_used for expense')
                 # meta-router: log decision after successful tool execution
                 await _log_meta_router_decision_async(update, route_res)
                 return
             elif tool in ('record_income', 'log_income'):
                 # simple acknowledge for income
-                await send_reply(update, f"已記收入：{args.get('amount')} {args.get('currency','HKD')} · {args.get('description','')}")
+                msg = f"已記收入：{args.get('amount')} {args.get('currency','HKD')} · {args.get('description','')}"
+                await send_reply(update, msg)
+                try:
+                    conn = sqlite3.connect(str(intake.DB_PATH))
+                    save_chat_message(conn, 'assistant', msg, tool_used='log_income')
+                    conn.close()
+                except Exception:
+                    logger.exception('failed to save chat_history tool_used for income')
                 await _log_meta_router_decision_async(update, route_res)
                 return
             elif tool in ('query_student','find_student','list_students','new_student','update_student_progress','log_lesson','schedule_next_lesson','schedule_next'):
@@ -480,7 +496,14 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                         else:
                             # res expected: {'id','name','properties'}
                             name = res.get('name') if isinstance(res, dict) else str(res)
-                            await send_reply(update, f"學生資料：{name}")
+                            msg = f"學生資料：{name}"
+                            await send_reply(update, msg)
+                            try:
+                                conn = sqlite3.connect(str(intake.DB_PATH))
+                                save_chat_message(conn, 'assistant', msg, tool_used='find_student')
+                                conn.close()
+                            except Exception:
+                                logger.exception('failed to save chat_history tool_used for find_student')
                             await _log_meta_router_decision_async(update, route_res)
                         return
 
@@ -491,7 +514,14 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                         else:
                             if isinstance(res, list):
                                 names = [s.get('name','') for s in res]
-                                await send_reply(update, "學生清單：\n" + "\n".join(names))
+                                msg = "學生清單：\n" + "\n".join(names)
+                                await send_reply(update, msg)
+                                try:
+                                    conn = sqlite3.connect(str(intake.DB_PATH))
+                                    save_chat_message(conn, 'assistant', msg, tool_used='list_students')
+                                    conn.close()
+                                except Exception:
+                                    logger.exception('failed to save chat_history tool_used for list_students')
                                 await _log_meta_router_decision_async(update, route_res)
                             else:
                                 await send_reply(update, str(res))
