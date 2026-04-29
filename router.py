@@ -250,6 +250,146 @@ flashcard_tools = [
 
 TOOLS.extend(flashcard_tools)
 
+MODE_TOOL_AFFINITY = {
+    "expense": ["log_expense", "log_income", "query_expenses", "correct_last_entry"],
+    "student": ["find_student", "log_lesson", "new_student", "list_students", "schedule_next_lesson"],
+    "chat": [],
+    "correction": ["correct_last_entry"],
+    "mixed": [],
+}
+
+MODE_PROMPTS = {
+    "expense": "用戶最近主要喺記帳，如果佢講嘅嘢似開支/收入，優先用記帳工具。",
+    "student": "用戶最近主要喺管理學生，如果佢講嘅嘢似學生相關，優先用學生工具。",
+    "chat": "用戶最近主要喺閒聊，除非好明確係指令，否則當閒聊處理。",
+    "correction": "用戶啱啱做完修正，要更加小心確認意圖先行動。",
+    "mixed": "",
+}
+
+
+def get_db_path() -> str:
+    """Resolve path to jarvis chat DB (same logic as _load_recent_history)."""
+    try:
+        from skills import intake
+        return str(intake.DB_PATH)
+    except Exception:
+        return os.path.join(os.path.dirname(__file__), 'jarvis.db')
+
+
+def detect_mode(chat_history: list[dict] | None, window: int = 5) -> str:
+    """
+    Read recent chat_history rows (prefer DB tool_used column) and return dominant mode.
+    Returns one of: "expense", "student", "chat", "correction", "mixed".
+
+    Logic:
+    - Query last `window` rows from chat_history table and inspect `tool_used` when present.
+    - Count occurrences by affinity mapping in MODE_TOOL_AFFINITY.
+    - If most-recent row corresponds to correct_last_entry (correction) -> return 'correction'.
+    - If no tool_used data available, fall back to 'chat'.
+    - If no dominant mode (top < 60%) -> 'mixed'.
+    """
+    # try DB-first (preferred since it stores tool_used)
+    try:
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        cur.execute("SELECT role, content, tool_used FROM chat_history ORDER BY id DESC LIMIT ?", (window,))
+        rows = cur.fetchall()
+        conn.close()
+        if not rows:
+            return 'chat'
+        # rows come newest->oldest; reverse to oldest->newest
+        rows = list(reversed(rows))
+        total = 0
+        counts = {k: 0 for k in MODE_TOOL_AFFINITY.keys()}
+        # check most recent for correction priority
+        last_row = rows[-1]
+        last_tool = None
+        try:
+            last_tool = last_row[2]
+        except Exception:
+            last_tool = None
+        if last_tool == 'correct_last_entry':
+            return 'correction'
+
+        for r in rows:
+            tool_used = None
+            try:
+                tool_used = r[2]
+            except Exception:
+                tool_used = None
+            if not tool_used:
+                continue
+            total += 1
+            for mode, tools in MODE_TOOL_AFFINITY.items():
+                if tool_used in tools:
+                    counts[mode] = counts.get(mode, 0) + 1
+                    break
+
+        if total == 0:
+            return 'chat'
+
+        # determine dominant
+        dominant_mode, dominant_count = max(counts.items(), key=lambda kv: kv[1])
+        if dominant_count / total >= 0.6:
+            return dominant_mode
+        return 'mixed'
+    except Exception:
+        # fallback: try to inspect provided chat_history for any explicit tool markers
+        try:
+            if chat_history and isinstance(chat_history, list):
+                counts = {k: 0 for k in MODE_TOOL_AFFINITY.keys()}
+                total = 0
+                for m in chat_history[-window:]:
+                    if not isinstance(m, dict):
+                        continue
+                    # prefer explicit tool_used if present
+                    tool = m.get('tool_used') or m.get('tool')
+                    if not tool:
+                        continue
+                    total += 1
+                    for mode, tools in MODE_TOOL_AFFINITY.items():
+                        if tool in tools:
+                            counts[mode] = counts.get(mode, 0) + 1
+                            break
+                if total == 0:
+                    return 'chat'
+                dominant_mode, dominant_count = max(counts.items(), key=lambda kv: kv[1])
+                if dominant_count / total >= 0.6:
+                    return dominant_mode
+                return 'mixed'
+        except Exception:
+            pass
+    return 'chat'
+
+
+def adjust_threshold(base_threshold: float, mode: str, tool_name: str | None) -> float:
+    """
+    Adjust base_threshold according to mode-tool affinity rules and clamp to [0.3,0.95].
+    """
+    if mode == 'mixed':
+        return base_threshold
+    t = float(base_threshold)
+    try:
+        if tool_name and tool_name in MODE_TOOL_AFFINITY.get(mode, []):
+            t = t - 0.1
+        elif mode == 'chat' and tool_name:
+            t = t + 0.1
+        if mode == 'correction':
+            t = t + 0.05
+    except Exception:
+        pass
+    # clamp
+    if t < 0.3:
+        t = 0.3
+    if t > 0.95:
+        t = 0.95
+    return t
+
+
+def get_mode_prompt(mode: str) -> str:
+    return MODE_PROMPTS.get(mode, '')
+
 
 def _load_recent_history(limit: int = 10) -> List[str]:
     out: List[str] = []
@@ -423,7 +563,17 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
     except Exception:
         # non-fatal — continue to normal routing
         pass
+    # Detect conversational mode from recent chat history and inject a short mode-specific
+    # system prompt to bias the LLM routing behavior (CG-3 memory-informed gating).
+    try:
+        mode = detect_mode(None, window=5)
+    except Exception:
+        mode = 'mixed'
+    mode_prompt = get_mode_prompt(mode)
     system = _build_system_prompt(recent)
+    if mode_prompt:
+        # append mode prompt at the end of system prompt (before tool descriptions)
+        system = system + "\n\n" + mode_prompt
     messages = [
         {"role": "system", "content": system},
     ]
@@ -584,7 +734,15 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
             # single-tool convenience: if only one call, return shape suitable for bot.py
             if len(parsed_calls) == 1:
                 pc = parsed_calls[0]
-                return {'action': 'route_decision', 'tool': pc['tool'], 'args': pc['args'], 'confidence': pc.get('_confidence'), 'assistant': None}
+                # adjust confidence threshold based on detected mode and tool affinity
+                return {
+                    'action': 'route_decision',
+                    'tool': pc['tool'],
+                    'args': pc['args'],
+                    'confidence': pc.get('_confidence'),
+                    'assistant': None,
+                    'detected_mode': mode,
+                }
             return {'action': 'route_decision', 'tool_calls': parsed_calls, 'assistant': None}
         except Exception:
             # fallthrough to other parsing strategies
@@ -603,8 +761,7 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
             except Exception:
                 args = {}
         conf = extract_confidence_from_args(args)
-        # route decision shape
-        return {'action': 'route_decision', 'tool': name, 'args': args, 'confidence': conf, 'assistant': None}
+        return {'action': 'route_decision', 'tool': name, 'args': args, 'confidence': conf, 'assistant': None, 'detected_mode': mode}
 
     # else assistant content
     assistant_text = msg.get('content')
@@ -684,7 +841,7 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
             pass
 
     # No tool chosen by model — return chat action
-    return {'action': 'route_decision', 'tool': None, 'args': None, 'confidence': 0.0, 'assistant': assistant_text}
+    return {'action': 'route_decision', 'tool': None, 'args': None, 'confidence': 0.0, 'assistant': assistant_text, 'detected_mode': mode}
 
 
 def extract_confidence_from_args(args: dict) -> float | None:

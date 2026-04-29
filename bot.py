@@ -332,8 +332,22 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                 if conf is None:
                     conf = 0.9
                 logger.info('[ROUTE] suggested tool=%s conf=%s args=%s', tool, conf, args)
-                # Confidence gating
-                if tool and conf >= 0.8:
+                # Confidence gating (dynamic thresholding via CG-3)
+                try:
+                    detected_mode = route_res.get('detected_mode') if isinstance(route_res, dict) else None
+                    # fallback: detect mode from conversation memory if router didn't provide
+                    if not detected_mode:
+                        try:
+                            from router import detect_mode
+                            detected_mode = detect_mode(history_msgs if history_msgs else None, window=5)
+                        except Exception:
+                            detected_mode = 'mixed'
+                    from router import adjust_threshold
+                    adjusted_threshold = adjust_threshold(0.8, detected_mode or 'mixed', tool)
+                except Exception:
+                    adjusted_threshold = 0.8
+
+                if tool and conf >= adjusted_threshold:
                     # execute directly
                     from router import execute_tool
                     if tool == 'learn_from_correction':
