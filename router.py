@@ -193,6 +193,63 @@ TOOLS = [
     }
 ]
 
+# flashcard tools (student study features) - added minimal tool schema
+flashcard_tools = [
+    {
+        "type": "function",
+        "function": {
+            "name": "add_flashcard",
+            "description": "加入一張 flashcard: deck (optional), question, answer",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "deck": {"type": "string"},
+                    "question": {"type": "string"},
+                    "answer": {"type": "string"}
+                },
+                "required": ["question", "answer"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "review_due",
+            "description": "列出到期需要複習的 flashcards，可選 deck",
+            "parameters": {
+                "type": "object",
+                "properties": {"deck": {"type": "string"}, "limit": {"type": "number"}}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "get_stats",
+            "description": "取得 flashcards 統計：total, due, decks",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "list_decks",
+            "description": "列出所有 decks",
+            "parameters": {"type": "object", "properties": {}}
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_cards",
+            "description": "根據關鍵字搜尋 question/answer",
+            "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "limit": {"type": "number"}}, "required": ["query"]}
+        }
+    }
+]
+
+TOOLS.extend(flashcard_tools)
+
 
 def _load_recent_history(limit: int = 10) -> List[str]:
     out: List[str] = []
@@ -835,6 +892,51 @@ def execute_tool(tool_name: str, args: dict | None):
                     title_text = ''.join([t.get('plain_text','') for t in title_prop.get('title',[])])
                 out.append({'id': p.get('id'), 'name': title_text})
             return out
+
+        # flashcard tools
+        if tool_name == 'add_flashcard':
+            try:
+                from jarvis import flashcards
+                deck = args.get('deck') if isinstance(args, dict) else None
+                q = args.get('question') if isinstance(args, dict) else None
+                a = args.get('answer') if isinstance(args, dict) else None
+                if not q or not a:
+                    return {'error': 'question and answer are required'}
+                return flashcards.add_flashcard(deck, q, a)
+            except Exception as e:
+                return {'error': str(e)}
+
+        if tool_name == 'review_due':
+            try:
+                from jarvis import flashcards
+                deck = args.get('deck') if isinstance(args, dict) else None
+                limit = int(args.get('limit', 20)) if isinstance(args, dict) else 20
+                return flashcards.review_due(limit=limit, deck=deck)
+            except Exception as e:
+                return {'error': str(e)}
+
+        if tool_name == 'get_stats':
+            try:
+                from jarvis import flashcards
+                return flashcards.get_stats()
+            except Exception as e:
+                return {'error': str(e)}
+
+        if tool_name == 'list_decks':
+            try:
+                from jarvis import flashcards
+                return flashcards.list_decks()
+            except Exception as e:
+                return {'error': str(e)}
+
+        if tool_name == 'search_cards':
+            try:
+                from jarvis import flashcards
+                q = args.get('query') if isinstance(args, dict) else ''
+                limit = int(args.get('limit', 20)) if isinstance(args, dict) else 20
+                return flashcards.search_cards(q, limit=limit)
+            except Exception as e:
+                return {'error': str(e)}
 
         # log_lesson: forward to student.log_lesson
         if tool_name == "log_lesson":

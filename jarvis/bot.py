@@ -48,7 +48,7 @@ def route_text(db_conn, text, llm_client=None):
         else:
             reply = chat_reply(text)
         try:
-            save_message(db_conn, 'assistant', reply)
+            save_message(db_conn, 'assistant', reply, tool_used=None)
         except Exception:
             pass
         return reply
@@ -65,7 +65,7 @@ def route_text(db_conn, text, llm_client=None):
             chatr = chat_reply(text)
             full_reply = chatr + '\n' + '我估你係想做上面嘅事，我已執行。如果唔啱話我知。'
         try:
-            save_message(db_conn, 'assistant', full_reply)
+            save_message(db_conn, 'assistant', full_reply, tool_used=None)
         except Exception:
             pass
         return full_reply

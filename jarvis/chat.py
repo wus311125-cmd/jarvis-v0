@@ -66,7 +66,7 @@ def chat_reply(text, db_path="jarvis.db"):
     # save history
     try:
         save_message(db_conn, 'user', text)
-        save_message(db_conn, 'assistant', reply)
+        save_message(db_conn, 'assistant', reply, tool_used=None)
     except Exception:
         pass
 

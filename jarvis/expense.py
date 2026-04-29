@@ -57,6 +57,6 @@ def store_expense(db_conn, amount, description, direction='expense'):
     # Also save to chat history so Jarvis can reference recent expense in conversation
     try:
         from jarvis.history import save_message
-        save_message(db_conn, 'assistant', f"記低: {direction} ${int(amount) if amount is not None else ''} / {description}")
+        save_message(db_conn, 'assistant', f"記低: {direction} ${int(amount) if amount is not None else ''} / {description}", tool_used='log_expense')
     except Exception:
         pass
