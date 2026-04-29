@@ -220,6 +220,14 @@ async def process_text(text: str, source: str = 'telegram') -> dict:
     - return {ok: bool, message: str, rowid: int|None}
     """
     logger.info("process_text: received text: %s", text)
+    # If caller passed a dict-like RECAP object, accept it (internal integration path)
+    if isinstance(text, dict):
+        # normalize to use rewritten_text for downstream processing
+        try:
+            distilled = text.get('distilled_fields')
+            text = text.get('rewritten_text', '') or ''
+        except Exception:
+            text = text
     # always write intake row first
     try:
         intake_rec = {

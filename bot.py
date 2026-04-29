@@ -267,10 +267,21 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
     step = 'rewrite'
     recent = load_today_context(10).splitlines() if load_today_context() else []
     try:
-        rewritten = rewrite_intent(text, entities_res.get('entity_context',''), recent)
+        # use recap.recap_rewrite if available to get distilled fields
+        try:
+            from recap import recap_rewrite
+            recap_out = recap_rewrite(text, entities_res.get('entity_context',''), recent)
+            rewritten = recap_out.get('rewritten_text', text)
+            distilled = recap_out.get('distilled_fields')
+            logger.info(f"[RECAP] distilled_fields=%s", distilled)
+        except Exception:
+            # fallback to existing rewrite_intent
+            rewritten = rewrite_intent(text, entities_res.get('entity_context',''), recent)
+            distilled = None
     except Exception:
-        logger.exception('[ROUTE] rewrite_intent failed, fallback to original text')
+        logger.exception('[ROUTE] rewrite_intent / recap_rewrite failed, fallback to original text')
         rewritten = text
+        distilled = None
     logger.info(f"[ROUTE] step=%s, result=%s", step, rewritten)
 
     # Short-circuit heuristics removed — routing delegated to LLM-native router
@@ -288,7 +299,9 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
             history_msgs = conv_memory.get_messages(user_id)
         except Exception:
             history_msgs = []
-        route_res = router_route(rewritten, entities_res.get('entity_context',''), recent_ctx, history=history_msgs)
+        # pass recap object (rewritten + distilled) so router can see distilled_fields
+        recap_obj = {'rewritten_text': rewritten, 'distilled_fields': distilled}
+        route_res = router_route(recap_obj, entities_res.get('entity_context',''), recent_ctx, history=history_msgs)
         # New: normalize potential multiple tool calls returned by router.route
         calls = []
         if isinstance(route_res, dict) and route_res.get('tool_calls'):
@@ -390,8 +403,8 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                 if not candidate:
                     # try best-effort from message text
                     try:
-                mm = re.match(r'(.+?)(?:上到邊|幾時上堂|上堂進度)', (update.message.text or ''))
-                candidate = mm.group(1).strip() if mm else None
+                        mm = re.match(r'(.+?)(?:上到邊|幾時上堂|上堂進度)', (update.message.text or ''))
+                        candidate = mm.group(1).strip() if mm else None
                     except Exception:
                         candidate = None
                 if candidate:

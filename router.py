@@ -312,6 +312,32 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
     """
     if recent is None:
         recent = _load_recent_history(10)
+
+    # Fast-path: if caller passed a RECAP object with distilled_fields indicating a correction,
+    # route directly to correct_last_entry instead of sending through the LLM router.
+    # This prevents distilled corrections (e.g. "頭先嗰筆改做 78") from being treated as new
+    # expenses by the intake pipeline.
+    try:
+        if isinstance(text, dict):
+            df = text.get('distilled_fields')
+            if isinstance(df, dict) and df.get('field') and ('new_value' in df):
+                field = df.get('field')
+                new_value = df.get('new_value')
+                # normalize numeric amounts to numbers for tool args
+                if field == 'amount':
+                    try:
+                        # keep ints as ints when possible
+                        nv = float(new_value)
+                        if nv.is_integer():
+                            nv = int(nv)
+                        new_value = nv
+                    except Exception:
+                        # leave as-is (string) if can't parse
+                        pass
+                return {'tool': 'correct_last_entry', 'args': {'field': field, 'new_value': new_value}, 'assistant': None}
+    except Exception:
+        # non-fatal — continue to normal routing
+        pass
     system = _build_system_prompt(recent)
     messages = [
         {"role": "system", "content": system},
@@ -324,6 +350,22 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
                 messages.append({'role': m.get('role'), 'content': m.get('content')})
     # finally append current user message
     messages.append({"role": "user", "content": text})
+
+    # Support RECAP distilled fields: if text is a dict-like with distilled fields (internal use),
+    # accept that shape and inject a short note to the model. This keeps backward compatibility.
+    try:
+        if isinstance(text, dict):
+            # expecting {'rewritten_text': str, 'distilled_fields': dict}
+            rt = text.get('rewritten_text')
+            df = text.get('distilled_fields')
+            if rt and isinstance(rt, str):
+                # replace last user message with rewritten text
+                messages[-1] = {"role": "user", "content": rt}
+                if df and isinstance(df, dict):
+                    # also append a short assistant-system note describing distilled fields for tool guidance
+                    messages.append({"role": "system", "content": f"Distilled fields: {json.dumps(df, ensure_ascii=False)}"})
+    except Exception:
+        pass
 
     # Local heuristic fallback when no API key (allows offline E2E smoke tests)
     if OPENROUTER_API_KEY is None:
