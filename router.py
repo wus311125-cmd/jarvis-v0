@@ -1,7 +1,11 @@
 import os
 import json
 import ast
-import httpx
+try:
+    import httpx
+except Exception:
+    # fallback to requests when httpx not available in environment
+    import requests as httpx
 import os
 import logging
 import sqlite3
