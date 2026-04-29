@@ -256,6 +256,7 @@ def _resolve_time(text: str) -> str:
 def _build_system_prompt(recent: List[str], entity_context: str = '') -> str:
     # 大賢者 system prompt — encourage LLM-native routing and tool use
     system = (
+        "你必須用繁體中文（香港廣東話口語）回覆。唔好用普通話、簡體中文或英文。Technical term 可以用英文。\n"
         "你係大賢者，Hopan 嘅個人 AI 助手 Jarvis 嘅核心。\n"
         "Hopan 係一個結他老師，有大約 20 個學生，同時用你管理日常記帳。\n\n"
         "你嘅能力（Skills）\n"
@@ -452,16 +453,16 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
         timeout=30.0,
     )
     # Dump raw response for debugging function-calling format mismatches
+    try:
+        raw_json = resp.json()
+        write_distill({"layer": "router_raw_response", "model": MODEL, "raw": raw_json})
+        if not raw_json:
+            write_distill({"layer": "router_raw_response_empty", "status": resp.status_code, "headers": dict(resp.headers), "text_snippet": resp.text[:8000]})
+    except Exception as _e:
         try:
-            raw_json = resp.json()
-            write_distill({"layer": "router_raw_response", "model": MODEL, "raw": raw_json})
-            if not raw_json:
-                write_distill({"layer": "router_raw_response_empty", "status": resp.status_code, "headers": dict(resp.headers), "text_snippet": resp.text[:8000]})
-        except Exception as _e:
-            try:
-                write_distill({"layer": "router_raw_text", "text_snippet": resp.text[:8000]})
-            except Exception:
-                write_distill({"layer": "router_raw_unreadable"})
+            write_distill({"layer": "router_raw_text", "text_snippet": resp.text[:8000]})
+        except Exception:
+            write_distill({"layer": "router_raw_unreadable"})
     # handle HTTP status similar to benchmark
     if resp.status_code == 451:
         raise RuntimeError('BLOCKED_HK (451)')

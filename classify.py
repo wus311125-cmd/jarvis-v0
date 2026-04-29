@@ -18,7 +18,7 @@ ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions'
 
 def rewrite_intent(message: str, entity_context: str, recent_turns: List[str]) -> str:
     """Call LLM to rewrite user message into a structured intent sentence."""
-    system = "你係一個 intent rewriter。將用戶嘅廣東話訊息 rewrite 成一句結構化嘅意圖描述（中文）。"
+    system = "你必須用繁體中文（香港廣東話口語）回覆。唔好用普通話、簡體中文或英文。Technical term 可以用英文。\n你係一個 intent rewriter。將用戶嘅廣東話訊息 rewrite 成一句結構化嘅意圖描述（中文）。"
     prompt = f"""{system}\n用戶訊息: {message}\nEntity context: {entity_context}\n最近對話: {recent_turns[-3:]}\n\nOutput 一句話描述用戶想做咩，格式：「用戶想 [動作]（[細節]）」\n如果唔確定，保留原意，唔好猜。"""
     if not OPENROUTER_KEY:
         # fallback: very simple rule
@@ -79,7 +79,7 @@ async def classify(text: str):
         return SimpleNamespace(type='expense_text', confidence=1.0)
 
     # attempt remote LLM classify
-    system = "You are a classifier. Return a JSON object with keys: type, confidence"
+    system = "你必須用繁體中文（香港廣東話口語）回覆。唔好用普通話、簡體中文或英文。Technical term 可以用英文。\nYou are a classifier. Return a JSON object with keys: type, confidence"
     payload = {
         'model': MODEL,
         'messages': [{'role': 'system', 'content': system}, {'role': 'user', 'content': text}],
