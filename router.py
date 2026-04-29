@@ -1,11 +1,7 @@
 import os
 import json
 import ast
-try:
-    import httpx
-except Exception:
-    # fallback to requests when httpx not available in environment
-    import requests as httpx
+import httpx
 import os
 import logging
 import sqlite3
@@ -13,7 +9,7 @@ import re
 from datetime import datetime, timedelta
 from typing import Any, Dict, List
 
-from skills import intake
+# skills.intake is optional in some test environments; import lazily where needed
 
 OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY')
 OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
@@ -246,7 +242,7 @@ flashcard_tools = [
         "type": "function",
         "function": {
             "name": "search_cards",
-            "description": "根據關鍵字搜尋 question/answer",
+            "description": "搜尋 flashcard 資料庫中符合關鍵字的卡片。當用戶問「有冇 X 相關嘅卡」、「搵 X」、「有冇關於 X」等搜尋意圖時，必須使用此工具查詢資料庫，唔好自行判斷有冇——你冇直接存取 flashcard 資料嘅能力。",
             "parameters": {"type": "object", "properties": {"query": {"type": "string"}, "limit": {"type": "number"}}, "required": ["query"]}
         }
     }
@@ -258,7 +254,13 @@ TOOLS.extend(flashcard_tools)
 def _load_recent_history(limit: int = 10) -> List[str]:
     out: List[str] = []
     try:
-        db = sqlite3.connect(str(intake.DB_PATH))
+        # import intake lazily; some test environments remove skills/intake stub
+        try:
+            from skills import intake
+            db_path = str(intake.DB_PATH)
+        except Exception:
+            db_path = os.path.join(os.path.dirname(__file__), 'jarvis.db')
+        db = sqlite3.connect(db_path)
         cur = db.cursor()
         cur.execute("SELECT role, content FROM chat_history ORDER BY id DESC LIMIT ?", (limit,))
         rows = cur.fetchall()
