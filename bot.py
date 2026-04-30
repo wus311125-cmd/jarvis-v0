@@ -942,13 +942,30 @@ async def send_reply(update, text: str):
                 await update.message.reply_text(text)
             except Exception:
                 pass
+            # persist assistant reply even when linter flagged it (we still send)
+            try:
+                conn = sqlite3.connect(str(intake.DB_PATH))
+                save_chat_message(conn, 'assistant', text, tool_used=None)
+                conn.close()
+            except Exception:
+                logger.exception('failed to persist assistant reply after linter-blocked send')
             return
         # result may be cleaned text
         cleaned = result if isinstance(result, str) else text
     except Exception as e:
         logger.warning("leak-linter error: %s", e)
         cleaned = text
-    await update.message.reply_text(cleaned)
+    try:
+        await update.message.reply_text(cleaned)
+    except Exception:
+        logger.exception('failed to send reply to telegram')
+    # persist assistant reply into chat_history for downstream recall/mode-detection
+    try:
+        conn = sqlite3.connect(str(intake.DB_PATH))
+        save_chat_message(conn, 'assistant', cleaned, tool_used=None)
+        conn.close()
+    except Exception:
+        logger.exception('failed to persist assistant reply to chat_history')
     return
 
 
