@@ -9,6 +9,24 @@ import json as _json
 import ast
 from types import SimpleNamespace
 import re
+import subprocess
+
+# Tools registry for function-calling compatibility. We'll add search_memory here
+# so the router/LLM can call it via function-calling. Each tool is described simply.
+TOOLS = [
+    {
+        'name': 'search_memory',
+        'description': '搜尋 Obsidian vault 記憶，用語意相似度返回最相關結果。',
+        'parameters': {
+            'type': 'object',
+            'properties': {
+                'query': {'type': 'string'},
+                'top_k': {'type': 'integer'}
+            },
+            'required': ['query']
+        }
+    }
+]
 
 OPENROUTER_KEY = os.getenv('OPENROUTER_API_KEY')
 # Use S51 RECAP model by default
@@ -172,3 +190,32 @@ async def llm_extract_expense(text: str) -> dict:
         'date': None,
         'description': desc,
     }
+
+
+def search_memory(query: str, top_k: int = 5) -> list:
+    """Wrapper around local memsearch CLI. Returns list of dicts: {text, source_file, score}.
+
+    Non-destructive: only reads existing memsearch index under ~/.memsearch.
+    """
+    ms = os.path.expanduser('~/.local/bin/memsearch')
+    if not os.path.exists(ms):
+        # try fallback in PATH
+        ms = 'memsearch'
+    cmd = [ms, 'search', query, '-k', str(top_k), '-j', '--source-prefix', os.path.expanduser('~/.memsearch/memory')]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+        out = proc.stdout.strip()
+        if not out:
+            return []
+        # memsearch returns JSON array
+        parsed = _json.loads(out)
+        results = []
+        for item in parsed:
+            # expected fields: score, chunk, source
+            text = item.get('chunk') or item.get('text') or ''
+            source = item.get('source') or item.get('path') or ''
+            score = item.get('score') if item.get('score') is not None else item.get('distance')
+            results.append({'text': text, 'source_file': source, 'score': score})
+        return results
+    except Exception:
+        return []

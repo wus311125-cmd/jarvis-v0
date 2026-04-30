@@ -224,6 +224,7 @@ import classify
 import json, hashlib
 from datetime import timedelta
 import requests
+from classify import search_memory
 
 AUDIT_LOG = os.path.expanduser('~/.opencode/leak-linter.log')
 MAX_RETRY = 3
