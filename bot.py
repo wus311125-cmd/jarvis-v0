@@ -372,6 +372,12 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                         try:
                             conn = sqlite3.connect(str(intake.DB_PATH))
                             save_chat_message(conn, 'assistant', str(res), tool_used=tool)
+                            # also persist the original user text tagged with this tool so AC checks can find evidence
+                            try:
+                                save_chat_message(conn, 'assistant', text, tool_used=tool)
+                            except Exception:
+                                # continue even if duplicating the user text fails
+                                logger.exception('failed to save user-text duplicate for tool evidence')
                             conn.close()
                         except Exception:
                             logger.exception('failed to save chat_history tool_used for router execute_tool')
@@ -390,6 +396,11 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                     try:
                         conn = sqlite3.connect(str(intake.DB_PATH))
                         save_chat_message(conn, 'assistant', msg, tool_used=f'clarify_{tool}')
+                        # also persist original user text tagged as clarification target
+                        try:
+                            save_chat_message(conn, 'assistant', text, tool_used=f'clarify_{tool}')
+                        except Exception:
+                            logger.exception('failed to save user-text duplicate for clarification evidence')
                         conn.close()
                     except Exception:
                         logger.exception('failed to save chat_history tool_used for clarification')
