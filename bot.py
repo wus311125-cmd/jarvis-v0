@@ -14,6 +14,70 @@ from collections import deque
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+import atexit
+import signal
+
+# PID file to prevent duplicate instances
+PIDFILE = os.path.join(os.path.dirname(__file__), 'bot.pid')
+
+
+def ensure_single_instance():
+    """Create a pidfile and ensure another bot isn't running. If another PID exists and
+    the process is alive, exit. Otherwise overwrite stale pidfile.
+    """
+    try:
+        if os.path.exists(PIDFILE):
+            try:
+                with open(PIDFILE, 'r', encoding='utf-8') as f:
+                    existing = int(f.read().strip())
+                # check if process alive
+                try:
+                    os.kill(existing, 0)
+                    logger.error('Another bot instance is already running (pid=%s). Exiting.', existing)
+                    raise SystemExit(1)
+                except OSError:
+                    # stale pidfile
+                    logger.info('Removing stale pidfile for pid=%s', existing)
+                    try:
+                        os.remove(PIDFILE)
+                    except Exception:
+                        pass
+            except Exception:
+                # malformed pidfile: remove
+                try:
+                    os.remove(PIDFILE)
+                except Exception:
+                    pass
+        # write our pid
+        with open(PIDFILE, 'w', encoding='utf-8') as f:
+            f.write(str(os.getpid()))
+
+        def _cleanup():
+            try:
+                if os.path.exists(PIDFILE):
+                    with open(PIDFILE, 'r', encoding='utf-8') as f:
+                        pid = f.read().strip()
+                    if pid and int(pid) == os.getpid():
+                        os.remove(PIDFILE)
+            except Exception:
+                pass
+
+        atexit.register(_cleanup)
+        # ensure cleanup on common signals
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            try:
+                signal.signal(sig, lambda *_: (_cleanup(), raise_system_exit()))
+            except Exception:
+                pass
+    except SystemExit:
+        raise
+    except Exception:
+        logger.exception('Failed to ensure single instance; continuing without pidfile')
+
+
+def raise_system_exit():
+    raise SystemExit(0)
+
 # simple in-memory dedupe for incoming message ids to avoid duplicate processing
 _PROCESSED_MSG_IDS = deque(maxlen=200)
 
@@ -168,6 +232,17 @@ def load_today_context(max_lines: int = 20) -> str:
             filtered.append(line)
     tail = filtered[-max_lines:]
     return "\n".join(tail).strip()
+
+
+# Early startup checks
+try:
+    ensure_single_instance()
+except SystemExit:
+    # allow script to exit cleanly if another instance running
+    raise
+except Exception:
+    # best-effort: log and continue
+    logger.exception('ensure_single_instance failed')
 
 def ask_opencode(prompt: str) -> str:
     context = load_today_context()

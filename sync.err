@@ -661,3 +661,22 @@ INFO:__main__:Starting sync (dry_run=False)
 INFO:__main__:Found 0 intake rows to consider
 INFO:__main__:Found 0 expense rows to consider
 INFO:__main__:Sync complete (dry_run=False)
+Traceback (most recent call last):
+  File "/Users/nhp/jarvis-v0/sync.py", line 5, in <module>
+    from notion_client import Client
+  File "/Users/nhp/jarvis-v0/.venv/lib/python3.14/site-packages/notion_client/__init__.py", line 9, in <module>
+    from .client import AsyncClient, Client
+  File "/Users/nhp/jarvis-v0/.venv/lib/python3.14/site-packages/notion_client/client.py", line 10, in <module>
+    import httpx
+  File "/Users/nhp/jarvis-v0/.venv/lib/python3.14/site-packages/httpx/__init__.py", line 2, in <module>
+    from ._api import delete, get, head, options, patch, post, put, request, stream
+  File "/Users/nhp/jarvis-v0/.venv/lib/python3.14/site-packages/httpx/_api.py", line 4, in <module>
+    from ._client import Client
+  File "/Users/nhp/jarvis-v0/.venv/lib/python3.14/site-packages/httpx/_client.py", line 30, in <module>
+    from ._transports.default import AsyncHTTPTransport, HTTPTransport
+  File "/Users/nhp/jarvis-v0/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 30, in <module>
+    import httpcore
+  File "/Users/nhp/jarvis-v0/.venv/lib/python3.14/site-packages/httpcore/__init__.py", line 139, in <module>
+    setattr(__locals[__name], "__module__", "httpcore")  # noqa
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'typing.Union' object has no attribute '__module__' and no __dict__ for setting new attributes. Did you mean: '__reduce__'?
