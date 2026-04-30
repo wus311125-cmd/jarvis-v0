@@ -19,7 +19,8 @@ CREATE TABLE IF NOT EXISTS expenses (
     date TEXT,
     note TEXT,
     source TEXT DEFAULT 'telegram',
-    synced_notion INTEGER DEFAULT 0
+    synced_notion INTEGER DEFAULT 0,
+    direction TEXT DEFAULT 'expense'
 );
 """
 
@@ -43,8 +44,10 @@ def store_expense(record: Dict[str, Any], db_path: Path = DB_PATH) -> int:
     except Exception:
         amt = 0.0
     amt = abs(amt)
+    # allow storing direction (income/expense)
+    direction = record.get('direction', 'expense')
     cur.execute(
-        "INSERT INTO expenses (timestamp, amount, currency, category, merchant, date, note, source, synced_notion) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)",
+        "INSERT INTO expenses (timestamp, amount, currency, category, merchant, date, note, source, synced_notion, direction) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)",
         (
             record.get("timestamp"),
             amt,
@@ -54,6 +57,7 @@ def store_expense(record: Dict[str, Any], db_path: Path = DB_PATH) -> int:
             record.get("date"),
             record.get("note"),
             record.get("source", "telegram"),
+            direction,
         ),
     )
     conn.commit()
