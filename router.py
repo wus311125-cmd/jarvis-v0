@@ -152,6 +152,52 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "search_notion",
+            "description": "Search Notion workspace for pages matching a query. Returns up to page_size results.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query string"},
+                    "page_size": {"type": "number", "description": "Number of results (max 20)"}
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "query_notion_database",
+            "description": "Query a Notion database by id. Accepts optional filter JSON. Returns up to 20 rows.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "database_id": {"type": "string"},
+                    "filter": {"type": "object"},
+                    "page_size": {"type": "number"}
+                },
+                "required": ["database_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "read_notion_page",
+            "description": "Read a Notion page's block children and return a truncated text body (max 3000 chars).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "page_id": {"type": "string"},
+                    "truncate_chars": {"type": "number"}
+                },
+                "required": ["page_id"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "correct_last_entry",
             "description": "修正最近一筆記錄（trigger 範例：'頭先嗰筆改做 X'、'上一筆改做 X'、'啱啱嗰個改返 X'、'改做 X'、'改返 X'、'改正 X'；英文範例：'change last entry to X', 'correct last entry to X'）。當用戶講法暗示要修正上一筆時，呼叫此 tool 並填入 field 與 new_value。數字值代表金額(amount)，文字代表商戶(merchant) 或備註(note)。",
             "parameters": {
@@ -1094,6 +1140,41 @@ def execute_tool(tool_name: str, args: dict | None):
                 total = sum([r[0] for r in rows]) if rows else 0
                 conn.close()
                 return {'period': period, 'total': total, 'count': len(rows)}
+            except Exception as e:
+                return {'error': str(e)}
+
+        # Notion tools: thin wrappers to jarvis.notion_client per handoff constraints
+        if tool_name == 'search_notion':
+            try:
+                from jarvis import notion_client
+                q = args.get('query') if isinstance(args, dict) else ''
+                page_size = int(args.get('page_size', 5)) if isinstance(args, dict) else 5
+                page_size = min(page_size, 20)
+                return notion_client.search_notion(q, page_size=page_size)
+            except Exception as e:
+                return {'error': str(e)}
+
+        if tool_name == 'query_notion_database':
+            try:
+                from jarvis import notion_client
+                dbid = args.get('database_id') if isinstance(args, dict) else None
+                filt = args.get('filter') if isinstance(args, dict) else None
+                page_size = int(args.get('page_size', 20)) if isinstance(args, dict) else 20
+                page_size = min(page_size, 20)
+                if not dbid:
+                    return {'error': 'database_id required'}
+                return notion_client.query_notion_database(dbid, filter_json=filt, page_size=page_size)
+            except Exception as e:
+                return {'error': str(e)}
+
+        if tool_name == 'read_notion_page':
+            try:
+                from jarvis import notion_client
+                pid = args.get('page_id') if isinstance(args, dict) else None
+                truncate_chars = int(args.get('truncate_chars', 3000)) if isinstance(args, dict) else 3000
+                if not pid:
+                    return {'error': 'page_id required'}
+                return notion_client.read_notion_page(pid, truncate_chars=truncate_chars)
             except Exception as e:
                 return {'error': str(e)}
 

@@ -378,6 +378,30 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                     res = await asyncio.to_thread(execute_tool, tool, args)
                     # format replies for expense/income tools to be human-readable
                     try:
+                        # Notion result formatting helper
+                        def _extract_title_from_page(p):
+                            if not isinstance(p, dict):
+                                return str(p)
+                            props = p.get('properties') or {}
+                            for key in ('NAME', 'Name', 'title', 'Title'):
+                                if key in props:
+                                    tp = props.get(key)
+                                    if isinstance(tp, dict) and tp.get('title'):
+                                        try:
+                                            return ''.join([t.get('plain_text','') for t in tp.get('title',[])])
+                                        except Exception:
+                                            pass
+                            if p.get('id'):
+                                return p.get('id')
+                            if p.get('url'):
+                                return p.get('url')
+                            if p.get('title') and isinstance(p.get('title'), list):
+                                try:
+                                    return ''.join([t.get('plain_text','') for t in p.get('title',[])])
+                                except Exception:
+                                    pass
+                            return str(p)
+
                         if tool in ("log_expense", "record_expense"):
                             rec = res.get('record', {}) if isinstance(res, dict) else {}
                             amount = rec.get('amount', '?')
@@ -388,6 +412,40 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                             amount = rec.get('amount', '?')
                             merchant = rec.get('merchant', '') or ''
                             reply_text = f"💰 已記收入 ${amount} {merchant}".strip()
+                        elif tool == 'search_notion':
+                            try:
+                                results = res.get('results', []) if isinstance(res, dict) else []
+                            except Exception:
+                                results = []
+                            if not results:
+                                reply_text = '冇喺 Notion 搵到相關內容。'
+                            else:
+                                lines = [f"喺 Notion 搵到 {len(results)} 項："]
+                                for i, r in enumerate(results[:10], start=1):
+                                    title = _extract_title_from_page(r)
+                                    uid = r.get('id') if isinstance(r, dict) else ''
+                                    lines.append(f"{i}. {title} \n   id: {uid}")
+                                reply_text = "\n".join(lines)
+                        elif tool == 'query_notion_database':
+                            try:
+                                results = res.get('results', []) if isinstance(res, dict) else []
+                            except Exception:
+                                results = []
+                            if not results:
+                                reply_text = 'Notion DB 冇 rows。'
+                            else:
+                                lines = [f"Notion DB 共 {len(results)} 筆，前 {min(len(results),10)} 筆："]
+                                for i, r in enumerate(results[:10], start=1):
+                                    title = _extract_title_from_page(r)
+                                    lines.append(f"{i}. {title} (id: {r.get('id')})")
+                                reply_text = "\n".join(lines)
+                        elif tool == 'read_notion_page':
+                            if isinstance(res, dict) and res.get('body') is not None:
+                                body = res.get('body') or ''
+                                preview = body if len(body) <= 2000 else body[:2000] + '...'
+                                reply_text = f"Notion Page {res.get('page_id')} 內容預覽：\n{preview}"
+                            else:
+                                reply_text = str(res)
                         else:
                             reply_text = str(res)
                         await send_reply(update, reply_text)
