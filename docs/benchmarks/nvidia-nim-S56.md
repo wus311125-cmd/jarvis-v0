@@ -1,48 +1,22 @@
-# NVIDIA NIM Benchmark (S56)
+| Model | HK | Chat (A) | FC Single (B) | FC Multi (C) | Avg Latency | Recommendation |
+|---|---:|---|---|---|---:|---|
+| nvidia/nemotron-3-nano-30b-a3b | Yes | — | OK | No | 1.28s | OK for FC |
+| nvidia/nemotron-3-super-120b-a12b | Yes | Function calling 是指在程式執行時，根據特定條件或需求自動調用預先定義好的函式（function）來執行特定任務的機制。 | OK | Ask | 13.05s | OK for FC |
+| deepseek-ai/deepseek-v4-flash | Yes | Function calling 係指讓 AI 模型能夠根據用戶指令，自動選擇並呼叫預先定義好的外部函數或 API 來執行特定任務（例如查天氣、發郵件），從而獲 | OK | Ask | 10.20s | OK for FC |
+| qwen/qwen3.5-122b-a10b | Yes | Function calling 係一種讓大型語言模型（LLM）能夠識別用戶意圖，並自動生成結構化數據以調用外部程式函數（例如查詢天氣、執行計算或操作資料庫）， | OK | Ask | 2.49s | OK for FC |
+| nvidia/llama-3.1-nemotron-nano-8b-v1 | Yes | 一個簡潔的句子："function calling 是指在程式碼中呼叫一個定義好的 function，讓它執行其內容。" | OK | OK | 3.18s | OK for FC |
+| nvidia/llama-3.3-nemotron-super-49b-v1 | Yes | Function calling 是指在程式執行過程中，呼叫（invoke）並執行事先定義好的程式碼塊（function或方法），以完成特定任務的動作。 | OK | OK | 2.72s | Use Nemotron Super 49B as best; Nano 8B as lightweight fallback |
 
-Base: https://integrate.api.nvidia.com/v1
+**Skipped / Errored models**
 
-## nvidia/nemotron-3-nano-30b-a3b
-- Scenario A: statuses=['200'], latencies_ms=[1308]
-- Scenario B: statuses=['200', '200', '200'], latencies_ms=[914, 923, 982]
-- Scenario C: statuses=['200', '200', '200'], latencies_ms=[1837, 1170, 1816]
 
-## nvidia/nemotron-3-super-120b-a12b
-- Scenario A: statuses=['200'], latencies_ms=[11620]
-- Scenario B: statuses=['200', '200', '200'], latencies_ms=[3394, 19110, 1987]
-- Scenario C: statuses=['200', '200', '200'], latencies_ms=[4996, 41199, 9010]
+| Model | Reason |
+|---|---|
+| z-ai/glm-5.1 | Timeout |
+| nvidia/gpt-oss-120b | 404 Not Found |
+| nvidia/gpt-oss-20b | 404 Not Found |
+| google/gemma-4-31b-it | Timeout |
+| moonshot/kimi-2.5 | 404 Not Found |
 
-## deepseek-ai/deepseek-v4-flash
-- Scenario A: statuses=['200'], latencies_ms=[5618]
-- Scenario B: statuses=['200', '200', '200'], latencies_ms=[3156, 6309, 12360]
-- Scenario C: statuses=['200', '200', '200'], latencies_ms=[4036, 36807, 3093]
 
-## z-ai/glm-5.1
-- Scenario A: statuses=['ERR'], latencies_ms=[60008]
-
-## qwen/qwen3.5-122b-a10b
-- Scenario A: statuses=['200'], latencies_ms=[890]
-- Scenario B: statuses=['200', '200', '200'], latencies_ms=[6350, 1088, 1576]
-- Scenario C: statuses=['200', '200', '200'], latencies_ms=[3915, 1013, 2574]
-
-## nvidia/gpt-oss-120b
-- Scenario A: statuses=['404'], latencies_ms=[248]
-
-## nvidia/gpt-oss-20b
-- Scenario A: statuses=['404'], latencies_ms=[261]
-
-## nvidia/llama-3.1-nemotron-nano-8b-v1
-- Scenario A: statuses=['200'], latencies_ms=[1698]
-- Scenario B: statuses=['200', '200', '200'], latencies_ms=[2766, 4552, 3128]
-- Scenario C: statuses=['200', '200', '200'], latencies_ms=[2975, 2157, 4994]
-
-## nvidia/llama-3.3-nemotron-super-49b-v1
-- Scenario A: statuses=['200'], latencies_ms=[1819]
-- Scenario B: statuses=['200', '200', '200'], latencies_ms=[1360, 1191, 7804]
-- Scenario C: statuses=['200', '200', '200'], latencies_ms=[1940, 3270, 1655]
-
-## google/gemma-4-31b-it
-- Scenario A: statuses=['ERR'], latencies_ms=[60006]
-
-## moonshot/kimi-2.5
-- Scenario A: statuses=['404'], latencies_ms=[300]
+最佳推薦：Nemotron Super 49B，輕量 fallback：Nemotron Nano 8B。
