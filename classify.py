@@ -216,6 +216,47 @@ def search_memory(query: str, top_k: int = 5) -> list:
             source = item.get('source') or item.get('path') or ''
             score = item.get('score') if item.get('score') is not None else item.get('distance')
             results.append({'text': text, 'source_file': source, 'score': score})
+
+        # If memsearch returned empty text, try to read source file and extract a relevant chunk
+        def extract_relevant_chunk(content: str, query: str, max_chars: int = 500) -> str:
+            # try exact match first
+            q = query.strip()
+            if not q:
+                return content[:max_chars]
+            idx = content.find(q)
+            if idx >= 0:
+                start = max(0, idx - max_chars // 2)
+                end = min(len(content), start + max_chars)
+                return content[start:end]
+            # fallback: token search
+            # split query into tokens (whitespace and punctuation)
+            import re as _re
+            tokens = [t for t in _re.split(r"\W+", q) if t]
+            best_idx = -1
+            for t in tokens:
+                i = content.find(t)
+                if i >= 0:
+                    best_idx = i
+                    break
+            if best_idx >= 0:
+                start = max(0, best_idx - max_chars // 2)
+                end = min(len(content), start + max_chars)
+                return content[start:end]
+            # final fallback: return head
+            return content[:max_chars]
+
+        for r in results:
+            if (not r.get('text')) and r.get('source_file'):
+                try:
+                    sf = os.path.expanduser(r['source_file'])
+                    if os.path.exists(sf):
+                        with open(sf, 'r', encoding='utf-8', errors='replace') as fh:
+                            content = fh.read()
+                        r['text'] = extract_relevant_chunk(content, query, max_chars=500)
+                except Exception:
+                    # ignore file read errors and leave text empty
+                    pass
+
         return results
     except Exception:
         return []
