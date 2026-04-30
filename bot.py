@@ -255,6 +255,13 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
         logger.exception('failed to append to memory')
     await update.message.reply_chat_action("typing")
     append_to_daily("Hopan", text)
+    # persist user message to chat_history for recall/mode-detection
+    try:
+        conn = sqlite3.connect(str(intake.DB_PATH))
+        save_chat_message(conn, 'user', text, tool_used=None)
+        conn.close()
+    except Exception:
+        logger.exception('failed to persist user message to chat_history')
     # Pass text to intake.process_text for E2E handling (classification -> expense store -> reply)
     # handle possible feedback message first
     handled = await handle_feedback(update, _)
