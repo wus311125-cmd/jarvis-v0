@@ -365,7 +365,21 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                         await send_reply(update, str(res))
                         return
                     res = await asyncio.to_thread(execute_tool, tool, args)
-                    await send_reply(update, str(res))
+                    # persist assistant reply with tool_used for traceability
+                    try:
+                        await send_reply(update, str(res))
+                    finally:
+                        try:
+                            conn = sqlite3.connect(str(intake.DB_PATH))
+                            save_chat_message(conn, 'assistant', str(res), tool_used=tool)
+                            conn.close()
+                        except Exception:
+                            logger.exception('failed to save chat_history tool_used for router execute_tool')
+                    # meta-router: log decision after successful tool execution
+                    try:
+                        await _log_meta_router_decision_async(update, route_res)
+                    except Exception:
+                        logger.exception('failed to _log_meta_router_decision_async after execute_tool')
                     return
                 elif tool and conf >= 0.5:
                     # clarify with user
@@ -373,6 +387,12 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                     msg = generate_clarification(rewritten, tool)
                     # store this clarification as assistant reply so follow-up can reference
                     await send_reply(update, msg)
+                    try:
+                        conn = sqlite3.connect(str(intake.DB_PATH))
+                        save_chat_message(conn, 'assistant', msg, tool_used=f'clarify_{tool}')
+                        conn.close()
+                    except Exception:
+                        logger.exception('failed to save chat_history tool_used for clarification')
                     # note: follow-up user reply will re-enter routing with the same recent/history
                     return
                 else:
@@ -499,7 +519,14 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                     # format responses per tool
                     if tool in ('query_student','find_student'):
                         if not res:
-                            await send_reply(update, f"搵唔到 {args.get('name') or args.get('student_name','')}。")
+                            msg_nf = f"搵唔到 {args.get('name') or args.get('student_name','')}。"
+                            await send_reply(update, msg_nf)
+                            try:
+                                conn = sqlite3.connect(str(intake.DB_PATH))
+                                save_chat_message(conn, 'assistant', msg_nf, tool_used='find_student')
+                                conn.close()
+                            except Exception:
+                                logger.exception('failed to save chat_history tool_used for find_student (not found)')
                             await _log_meta_router_decision_async(update, route_res)
                         else:
                             # res expected: {'id','name','properties'}
@@ -517,7 +544,14 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
 
                     if tool == 'list_students':
                         if not res:
-                            await send_reply(update, "學生清單：冇學生。")
+                            msg_ls = "學生清單：冇學生。"
+                            await send_reply(update, msg_ls)
+                            try:
+                                conn = sqlite3.connect(str(intake.DB_PATH))
+                                save_chat_message(conn, 'assistant', msg_ls, tool_used='list_students')
+                                conn.close()
+                            except Exception:
+                                logger.exception('failed to save chat_history tool_used for list_students (not found)')
                             await _log_meta_router_decision_async(update, route_res)
                         else:
                             if isinstance(res, list):
@@ -547,12 +581,26 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                         return
 
                     if tool in ('update_student_progress','log_lesson'):
-                        await send_reply(update, str(res))
+                        msg_ll = str(res)
+                        await send_reply(update, msg_ll)
+                        try:
+                            conn = sqlite3.connect(str(intake.DB_PATH))
+                            save_chat_message(conn, 'assistant', msg_ll, tool_used='log_lesson')
+                            conn.close()
+                        except Exception:
+                            logger.exception('failed to save chat_history tool_used for log_lesson')
                         await _log_meta_router_decision_async(update, route_res)
                         return
 
                     if tool in ('schedule_next_lesson','schedule_next'):
-                        await send_reply(update, str(res))
+                        msg_sn = str(res)
+                        await send_reply(update, msg_sn)
+                        try:
+                            conn = sqlite3.connect(str(intake.DB_PATH))
+                            save_chat_message(conn, 'assistant', msg_sn, tool_used='schedule_next_lesson')
+                            conn.close()
+                        except Exception:
+                            logger.exception('failed to save chat_history tool_used for schedule_next_lesson')
                         await _log_meta_router_decision_async(update, route_res)
                         return
 
@@ -592,16 +640,23 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                         cur = conn.cursor()
                         cur.execute('SELECT id FROM expenses ORDER BY id DESC LIMIT 1')
                         row = cur.fetchone()
-                        if row:
-                            eid = row[0]
-                            try:
-                                amt = float(new_value)
-                                cur.execute('UPDATE expenses SET amount=? WHERE id=?', (amt, eid))
-                                conn.commit()
-                                conn.close()
-                                await send_reply(update, f'已更新最近一筆金額為 {amt}。')
-                                await _log_meta_router_decision_async(update, route_res)
-                                return
+                            if row:
+                                eid = row[0]
+                                try:
+                                    amt = float(new_value)
+                                    cur.execute('UPDATE expenses SET amount=? WHERE id=?', (amt, eid))
+                                    conn.commit()
+                                    conn.close()
+                                    msg_upd = f'已更新最近一筆金額為 {amt}。'
+                                    await send_reply(update, msg_upd)
+                                    try:
+                                        conn2 = sqlite3.connect(str(intake.DB_PATH))
+                                        save_chat_message(conn2, 'assistant', msg_upd, tool_used='correct_last_entry')
+                                        conn2.close()
+                                    except Exception:
+                                        logger.exception('failed to save chat_history tool_used for correct_last_entry')
+                                    await _log_meta_router_decision_async(update, route_res)
+                                    return
                             except Exception:
                                 conn.close()
                     # fallback
