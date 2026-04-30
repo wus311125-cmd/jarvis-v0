@@ -13,6 +13,13 @@ def parse(text, llm_client=None):
         desc = _extract_desc(t)
         return {'amount': abs(amount) if amount is not None else None, 'description': desc, 'direction': 'expense'}
 
+    # detect explicit plus -> income
+    if text.startswith('+'):
+        t = text[1:].strip()
+        amount = _extract_amount(t)
+        desc = _extract_desc(t)
+        return {'amount': abs(amount) if amount is not None else None, 'description': desc, 'direction': 'income'}
+
     # try to extract amount locally
     amount = _extract_amount(text)
     desc = _extract_desc(text)
