@@ -638,3 +638,14 @@ INFO:__main__:Starting sync (dry_run=False)
 INFO:__main__:Found 0 intake rows to consider
 INFO:__main__:Found 0 expense rows to consider
 INFO:__main__:Sync complete (dry_run=False)
+INFO:__main__:Starting sync (dry_run=False)
+INFO:__main__:Found 0 intake rows to consider
+INFO:__main__:Found 2 expense rows to consider
+INFO:httpx:HTTP Request: POST https://api.notion.com/v1/pages "HTTP/1.1 200 OK"
+INFO:httpx:HTTP Request: POST https://api.notion.com/v1/pages "HTTP/1.1 200 OK"
+INFO:__main__:Sync complete (dry_run=False)
+INFO:__main__:Starting sync (dry_run=False)
+INFO:__main__:Found 0 intake rows to consider
+INFO:__main__:Found 1 expense rows to consider
+INFO:httpx:HTTP Request: POST https://api.notion.com/v1/pages "HTTP/1.1 200 OK"
+INFO:__main__:Sync complete (dry_run=False)

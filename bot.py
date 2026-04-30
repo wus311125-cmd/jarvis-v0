@@ -376,18 +376,29 @@ async def on_text(update: Update, _: ContextTypes.DEFAULT_TYPE):
                         await send_reply(update, str(res))
                         return
                     res = await asyncio.to_thread(execute_tool, tool, args)
-                    # persist assistant reply with tool_used for traceability
+                    # format replies for expense/income tools to be human-readable
                     try:
-                        await send_reply(update, str(res))
+                        if tool in ("log_expense", "record_expense"):
+                            rec = res.get('record', {}) if isinstance(res, dict) else {}
+                            amount = rec.get('amount', '?')
+                            merchant = rec.get('merchant', '') or ''
+                            reply_text = f"💸 已記 ${amount} {merchant}".strip()
+                        elif tool in ("log_income", "record_income"):
+                            rec = res.get('record', {}) if isinstance(res, dict) else {}
+                            amount = rec.get('amount', '?')
+                            merchant = rec.get('merchant', '') or ''
+                            reply_text = f"💰 已記收入 ${amount} {merchant}".strip()
+                        else:
+                            reply_text = str(res)
+                        await send_reply(update, reply_text)
                     finally:
                         try:
                             conn = sqlite3.connect(str(intake.DB_PATH))
-                            save_chat_message(conn, 'assistant', str(res), tool_used=tool)
+                            save_chat_message(conn, 'assistant', reply_text, tool_used=tool)
                             # also persist the original user text tagged with this tool so AC checks can find evidence
                             try:
                                 save_chat_message(conn, 'assistant', text, tool_used=tool)
                             except Exception:
-                                # continue even if duplicating the user text fails
                                 logger.exception('failed to save user-text duplicate for tool evidence')
                             conn.close()
                         except Exception:
