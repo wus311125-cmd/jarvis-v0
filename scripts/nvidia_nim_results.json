@@ -1,0 +1,1989 @@
+{
+  "models": [
+    {
+      "model": "nvidia/nemotron-3-nano-30b-a3b",
+      "scenarios": {
+        "A": [
+          {
+            "status_code": 200,
+            "latency_s": 1.3084328174591064,
+            "json": {
+              "id": "chatcmpl-a25f655252d91f59",
+              "object": "chat.completion",
+              "created": 1777525918,
+              "model": "nvidia/nemotron-3-nano-30b-a3b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": "嗯，用户问的是“用一句話解釋咩係 function calling”，看起来是想用粤语解释“function calling”这个编程概念。用户可能是粤语使用者，正在学习编程，或者需要快速理解这个术语。\n\n“function calling”在编程里指的是调用函数，就像按按钮一样执行一段预设的代码。用户要的是“一句話”，所以得简短精炼，不能太啰嗦。\n\n考虑到粤语的表达习惯，得用口语化的词，比如“叫嚟”比“调用”更自然。要避免用英文术语，但“function”在粤语技术圈可能通用，不过用户明确要“一句話”，所以得用更生活化的说法。\n\n试想几个版本：“按住按鈕就做啲事”？但“function”本身是函数，可能得保留。或者“用函數咁做啲事”？但用户要的是“一句話”，得更简短。\n\n啊，想到个更顺口的：“喺程式入面，用函數咁做啲事”。不过“用函數”可能太技",
+                    "reasoning_content": "嗯，用户问的是“用一句話解釋咩係 function calling”，看起来是想用粤语解释“function calling”这个编程概念。用户可能是粤语使用者，正在学习编程，或者需要快速理解这个术语。\n\n“function calling”在编程里指的是调用函数，就像按按钮一样执行一段预设的代码。用户要的是“一句話”，所以得简短精炼，不能太啰嗦。\n\n考虑到粤语的表达习惯，得用口语化的词，比如“叫嚟”比“调用”更自然。要避免用英文术语，但“function”在粤语技术圈可能通用，不过用户明确要“一句話”，所以得用更生活化的说法。\n\n试想几个版本：“按住按鈕就做啲事”？但“function”本身是函数，可能得保留。或者“用函數咁做啲事”？但用户要的是“一句話”，得更简短。\n\n啊，想到个更顺口的：“喺程式入面，用函數咁做啲事”。不过“用函數”可能太技"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "length",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 28,
+                "total_tokens": 328,
+                "completion_tokens": 300,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          }
+        ],
+        "B": [
+          {
+            "status_code": 200,
+            "latency_s": 0.9141628742218018,
+            "json": {
+              "id": "chatcmpl-9d1e52a387d8f6ab",
+              "object": "chat.completion",
+              "created": 1777526067,
+              "model": "nvidia/nemotron-3-nano-30b-a3b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-877912c4618eabfe",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"杯咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ],
+                    "reasoning": "The user wants to record an expense: \"今日買咗杯咖啡 $38\". They want to log expense. The tool log_expense takes item and amount. So we need to parse item \"杯咖啡\" and amount 38. Probably amount is numeric, maybe integer. Use log_expense with item \"杯咖啡\" and amount 38. Return tool call.\n",
+                    "reasoning_content": "The user wants to record an expense: \"今日買咗杯咖啡 $38\". They want to log expense. The tool log_expense takes item and amount. So we need to parse item \"杯咖啡\" and amount 38. Probably amount is numeric, maybe integer. Use log_expense with item \"杯咖啡\" and amount 38. Return tool call.\n"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 333,
+                "total_tokens": 464,
+                "completion_tokens": 131,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 0.9230179786682129,
+            "json": {
+              "id": "chatcmpl-b3aa9e992729f7e5",
+              "object": "chat.completion",
+              "created": 1777526068,
+              "model": "nvidia/nemotron-3-nano-30b-a3b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-95ce7173f9e2e999",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"杯咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ],
+                    "reasoning": "The user wants to record an expense: \"今日買咗杯咖啡 $38\". They want to log expense. The tool log_expense takes item and amount. So we need to parse item \"杯咖啡\" and amount 38. Probably amount is numeric, maybe integer. So call log_expense with item \"杯咖啡\" and amount 38. Return tool call.\n",
+                    "reasoning_content": "The user wants to record an expense: \"今日買咗杯咖啡 $38\". They want to log expense. The tool log_expense takes item and amount. So we need to parse item \"杯咖啡\" and amount 38. Probably amount is numeric, maybe integer. So call log_expense with item \"杯咖啡\" and amount 38. Return tool call.\n"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 333,
+                "total_tokens": 465,
+                "completion_tokens": 132,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 0.9816420078277588,
+            "json": {
+              "id": "chatcmpl-9c0ad485490230e4",
+              "object": "chat.completion",
+              "created": 1777526070,
+              "model": "nvidia/nemotron-3-nano-30b-a3b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-9ab76139ead8832c",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"杯咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ],
+                    "reasoning": "The user wants to record an expense: \"今日買咗杯咖啡 $38\". They want to log expense. The tool log_expense takes item and amount. So we need to parse item \"杯咖啡\" and amount 38. Probably amount is numeric, maybe integer. So call log_expense with item \"杯咖啡\" and amount 38. Return tool call.\n",
+                    "reasoning_content": "The user wants to record an expense: \"今日買咗杯咖啡 $38\". They want to log expense. The tool log_expense takes item and amount. So we need to parse item \"杯咖啡\" and amount 38. Probably amount is numeric, maybe integer. So call log_expense with item \"杯咖啡\" and amount 38. Return tool call.\n"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 333,
+                "total_tokens": 465,
+                "completion_tokens": 132,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          }
+        ],
+        "C": [
+          {
+            "status_code": 200,
+            "latency_s": 1.8368027210235596,
+            "json": {
+              "id": "chatcmpl-b4ea625c3e4265a0",
+              "object": "chat.completion",
+              "created": 1777526071,
+              "model": "nvidia/nemotron-3-nano-30b-a3b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": "The user wrote in Cantonese: \"幫我記帳同埋 set 個 reminder 聽日交租\". Means \"Help me record an expense and set a reminder to pay rent today\". So they want to log an expense (maybe rent) and set a reminder for today to pay rent. We need to use the tools: log_expense and set_reminder.\n\nWe need to decide parameters. For log_expense: item and amount. The user didn't specify amount. Could assume rent amount? Not given. Might need to ask clarification? The instruction says if info missing, check if tools can get it; if not, ask user. But we have to produce a response maybe with a tool call? The user wants both actions. We can proceed to set a reminder for today (datetime). Need ISO datetime. Today's date is 2025-11-03 (the system date). Time not specified; we can set a default time like \"2025-11-03T18:00:00\". But maybe better to ask user for time? The instruction says we can set reminder with datetime; if not provided, maybe we can set now? But we need to provide a datetime string. Could use current timestamp? Let's assume \"2025-11-03T15:00:00\". But maybe we should ask for clarification about amount",
+                    "reasoning_content": "The user wrote in Cantonese: \"幫我記帳同埋 set 個 reminder 聽日交租\". Means \"Help me record an expense and set a reminder to pay rent today\". So they want to log an expense (maybe rent) and set a reminder for today to pay rent. We need to use the tools: log_expense and set_reminder.\n\nWe need to decide parameters. For log_expense: item and amount. The user didn't specify amount. Could assume rent amount? Not given. Might need to ask clarification? The instruction says if info missing, check if tools can get it; if not, ask user. But we have to produce a response maybe with a tool call? The user wants both actions. We can proceed to set a reminder for today (datetime). Need ISO datetime. Today's date is 2025-11-03 (the system date). Time not specified; we can set a default time like \"2025-11-03T18:00:00\". But maybe better to ask user for time? The instruction says we can set reminder with datetime; if not provided, maybe we can set now? But we need to provide a datetime string. Could use current timestamp? Let's assume \"2025-11-03T15:00:00\". But maybe we should ask for clarification about amount"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "length",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 437,
+                "total_tokens": 737,
+                "completion_tokens": 300,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 1.1703171730041504,
+            "json": {
+              "id": "chatcmpl-b5151f5d6b06681c",
+              "object": "chat.completion",
+              "created": 1777526074,
+              "model": "nvidia/nemotron-3-nano-30b-a3b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": "The user wrote in Cantonese: \"幫我記帳同埋 set 個 reminder 聽日交租\". Means \"Help me record expenses and set a reminder to pay rent today\". So they want to log an expense and set a reminder. The expense likely is rent payment? They want to record an expense (maybe rent) and set a reminder for today to pay rent. We need to call log_expense with item and amount. They didn't specify amount. Could ask for amount? But maybe we can assume they want to record rent expense, but amount unknown. Could ask clarification. However instructions: If information missing, check if tools can get it; if not, ask user. The amount is required. So we need to ask user for amount. Also need datetime for reminder: they said \"聽日交租\" meaning \"pay rent today\". So datetime should be today's date at some time? Could use current datetime? We can set datetime to today's date at e.g., \"2025-11-03T??\". But we need to provide ISO datetime. We can assume now is 2025-11-03 (current date). Could set time maybe \"2025-11-03T18:00:00\". But better ask user for specific time? The tool requires datetime parameter. We can set a default maybe \"202",
+                    "reasoning_content": "The user wrote in Cantonese: \"幫我記帳同埋 set 個 reminder 聽日交租\". Means \"Help me record expenses and set a reminder to pay rent today\". So they want to log an expense and set a reminder. The expense likely is rent payment? They want to record an expense (maybe rent) and set a reminder for today to pay rent. We need to call log_expense with item and amount. They didn't specify amount. Could ask for amount? But maybe we can assume they want to record rent expense, but amount unknown. Could ask clarification. However instructions: If information missing, check if tools can get it; if not, ask user. The amount is required. So we need to ask user for amount. Also need datetime for reminder: they said \"聽日交租\" meaning \"pay rent today\". So datetime should be today's date at some time? Could use current datetime? We can set datetime to today's date at e.g., \"2025-11-03T??\". But we need to provide ISO datetime. We can assume now is 2025-11-03 (current date). Could set time maybe \"2025-11-03T18:00:00\". But better ask user for specific time? The tool requires datetime parameter. We can set a default maybe \"202"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "length",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 437,
+                "total_tokens": 737,
+                "completion_tokens": 300,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 1.8156652450561523,
+            "json": {
+              "id": "chatcmpl-88247d82131472dd",
+              "object": "chat.completion",
+              "created": 1777526075,
+              "model": "nvidia/nemotron-3-nano-30b-a3b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": "The user wrote in Cantonese: \"幫我記帳同埋 set 個 reminder 聽日交租\". This translates roughly to \"Help me record an expense and set a reminder to pay rent today\". So they want to log an expense (maybe rent) and set a reminder for paying rent today. They didn't specify amount or item details. They said \"記帳同埋 set 個 reminder 聽日交租\". \"聽日交租\" means \"pay rent today\". So we need to record an expense: item maybe \"rent\" and amount? Not given. Could ask for amount? But maybe we can assume they want to record rent expense, but amount unknown. The instruction says if information is missing, check if we can use tools to get it; if not, ask the user. We have two tools: log_expense (requires item and amount) and set_reminder (requires task and datetime). We need to set a reminder for today. The datetime should be ISO format. \"today\" presumably means today's date at some time; we could use current date at e.g., 2025-11-03 (the current date is 2025-11-03). But we need a specific datetime; maybe set a reminder for today at a certain time, but not given. Could set a generic datetime like \"2025-1",
+                    "reasoning_content": "The user wrote in Cantonese: \"幫我記帳同埋 set 個 reminder 聽日交租\". This translates roughly to \"Help me record an expense and set a reminder to pay rent today\". So they want to log an expense (maybe rent) and set a reminder for paying rent today. They didn't specify amount or item details. They said \"記帳同埋 set 個 reminder 聽日交租\". \"聽日交租\" means \"pay rent today\". So we need to record an expense: item maybe \"rent\" and amount? Not given. Could ask for amount? But maybe we can assume they want to record rent expense, but amount unknown. The instruction says if information is missing, check if we can use tools to get it; if not, ask the user. We have two tools: log_expense (requires item and amount) and set_reminder (requires task and datetime). We need to set a reminder for today. The datetime should be ISO format. \"today\" presumably means today's date at some time; we could use current date at e.g., 2025-11-03 (the current date is 2025-11-03). But we need a specific datetime; maybe set a reminder for today at a certain time, but not given. Could set a generic datetime like \"2025-1"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "length",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 437,
+                "total_tokens": 737,
+                "completion_tokens": 300,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "scenarios": {
+        "A": [
+          {
+            "status_code": 200,
+            "latency_s": 11.619941234588623,
+            "json": {
+              "id": "chatcmpl-9eba724fe90861b4",
+              "object": "chat.completion",
+              "created": 1777525919,
+              "model": "nvidia/nemotron-3-super-120b-a12b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "Function calling 是指在程式執行時，根據特定條件或需求自動調用預先定義好的函式（function）來執行特定任務的機制。",
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": "We need to respond in Chinese (Cantonese? The user wrote \"用一句話解釋咩係 function calling\" which is Cantonese mixed with English: \"用一句話解釋咩係 function calling\". Likely they want a one-sentence explanation of what function calling is. Provide in Chinese (maybe Cantonese). Use one sentence. So answer: \"Function calling 是指在程式執行時，根據特定條件或需求自動調用預先定義好的函式（function）來執行特定任務的機制。\" That's one sentence. Ensure it's one sentence. Provide that.\n\n",
+                    "reasoning_content": "We need to respond in Chinese (Cantonese? The user wrote \"用一句話解釋咩係 function calling\" which is Cantonese mixed with English: \"用一句話解釋咩係 function calling\". Likely they want a one-sentence explanation of what function calling is. Provide in Chinese (maybe Cantonese). Use one sentence. So answer: \"Function calling 是指在程式執行時，根據特定條件或需求自動調用預先定義好的函式（function）來執行特定任務的機制。\" That's one sentence. Ensure it's one sentence. Provide that.\n\n"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "stop",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 28,
+                "total_tokens": 222,
+                "completion_tokens": 194,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          }
+        ],
+        "B": [
+          {
+            "status_code": 200,
+            "latency_s": 3.3938748836517334,
+            "json": {
+              "id": "chatcmpl-84376f36e4c3bacc",
+              "object": "chat.completion",
+              "created": 1777526078,
+              "model": "nvidia/nemotron-3-super-120b-a12b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-82e0458cca191231",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"杯咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ],
+                    "reasoning": "The user wants to record an expense: \"今日買咗杯咖啡 $38\". They want to log an expense for a coffee costing $38. I need to use the log_expense function with item \"杯咖啡\" and amount 38. The amount is a number, so I should pass 38. The item should be a string: \"杯咖啡\". Let's call the function.\n",
+                    "reasoning_content": "The user wants to record an expense: \"今日買咗杯咖啡 $38\". They want to log an expense for a coffee costing $38. I need to use the log_expense function with item \"杯咖啡\" and amount 38. The amount is a number, so I should pass 38. The item should be a string: \"杯咖啡\". Let's call the function.\n"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 333,
+                "total_tokens": 471,
+                "completion_tokens": 138,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 19.109790086746216,
+            "json": {
+              "id": "chatcmpl-9ff7029143d500ad",
+              "object": "chat.completion",
+              "created": 1777526081,
+              "model": "nvidia/nemotron-3-super-120b-a12b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-8d90c4b887862ed6",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"杯咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ],
+                    "reasoning": "The user wants to record an expense: \"今日買咗杯咖啡 $38\". That means they bought a coffee for $38. I need to use the log_expense function with item and amount. The item is \"杯咖啡\" (cup of coffee) or maybe \"咖啡\". The amount is 38. I should call the function. Let's do that.\n",
+                    "reasoning_content": "The user wants to record an expense: \"今日買咗杯咖啡 $38\". That means they bought a coffee for $38. I need to use the log_expense function with item and amount. The item is \"杯咖啡\" (cup of coffee) or maybe \"咖啡\". The amount is 38. I should call the function. Let's do that.\n"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 333,
+                "total_tokens": 464,
+                "completion_tokens": 131,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 1.9873290061950684,
+            "json": {
+              "id": "chatcmpl-a380f2ab2683965a",
+              "object": "chat.completion",
+              "created": 1777526101,
+              "model": "nvidia/nemotron-3-super-120b-a12b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-bc408aa1429c16c2",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"杯咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ],
+                    "reasoning": "The user wants to record an expense: \"今日買咗杯咖啡 $38\". So item is \"杯咖啡\" (cup of coffee) and amount is 38. I need to use the log_expense function. Let's call it.\n",
+                    "reasoning_content": "The user wants to record an expense: \"今日買咗杯咖啡 $38\". So item is \"杯咖啡\" (cup of coffee) and amount is 38. I need to use the log_expense function. Let's call it.\n"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 333,
+                "total_tokens": 435,
+                "completion_tokens": 102,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          }
+        ],
+        "C": [
+          {
+            "status_code": 200,
+            "latency_s": 4.996124029159546,
+            "json": {
+              "id": "chatcmpl-92096e2996395b5e",
+              "object": "chat.completion",
+              "created": 1777526104,
+              "model": "nvidia/nemotron-3-super-120b-a12b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "請問租金是多少？以及你想設定提醒在幾點？（例如：上午9點）",
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": "The user wants to record an expense and set a reminder for paying rent tomorrow. They didn't specify the amount for rent, nor the exact time for the reminder. I need to ask for clarification: how much is the rent? And what time should the reminder be set for? Also, they said \"聽日交租\" which means \"pay rent tomorrow\". So the reminder should be for tomorrow, but need a specific datetime.\n\nI should ask: \"請問租金是多少？以及你想設定提醒在幾點？\" (How much is the rent? And what time would you like to set the reminder for?)\n\nBut maybe I can assume a default time? Better to ask.\n\nLet me respond in Cantonese as the user used Cantonese.\n\nI'll ask for the rent amount and the preferred time for the reminder.\n\n",
+                    "reasoning_content": "The user wants to record an expense and set a reminder for paying rent tomorrow. They didn't specify the amount for rent, nor the exact time for the reminder. I need to ask for clarification: how much is the rent? And what time should the reminder be set for? Also, they said \"聽日交租\" which means \"pay rent tomorrow\". So the reminder should be for tomorrow, but need a specific datetime.\n\nI should ask: \"請問租金是多少？以及你想設定提醒在幾點？\" (How much is the rent? And what time would you like to set the reminder for?)\n\nBut maybe I can assume a default time? Better to ask.\n\nLet me respond in Cantonese as the user used Cantonese.\n\nI'll ask for the rent amount and the preferred time for the reminder.\n\n"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "stop",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 437,
+                "total_tokens": 647,
+                "completion_tokens": 210,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 41.199233055114746,
+            "json": {
+              "id": "chatcmpl-9566b74d65ee616c",
+              "object": "chat.completion",
+              "created": 1777526109,
+              "model": "nvidia/nemotron-3-super-120b-a12b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "The user wants to record an expense and set a reminder for paying rent tomorrow. They said \"幫我記帳同埋 set 個 reminder 聽日交租\" which means \"Help me record an expense and set a reminder for paying rent tomorrow.\"\n\nWe need to record an expense, but they didn't specify what expense or amount. They only mentioned setting a reminder for paying rent tomorrow. Possibly they want to record the rent expense? Or maybe they want to record some other expense? The phrase \"記帳\" means record accounts, i.e., record an expense. But they didn't give details. We need to ask for clarification? However, the instruction says we have access to tools and we should use them. Possibly we can assume they want to record the rent expense? But we don't know the amount. We could ask for details, but maybe we can set the reminder first and then ask for expense details? Or we can record a placeholder expense? Better to ask for clarification.\n\nBut let's see: The user said \"幫我記帳同埋 set 個 reminder 聽日交租\". This could be interpreted as: help me record an expense (maybe the rent) and set a reminder for paying rent tomorrow. So we need to record the rent expense. However, we need the amount. We could ask: \"請問租金是多少?\" But maybe we can set the reminder",
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": "The user wants to record an expense and set a reminder for paying rent tomorrow. They said \"幫我記帳同埋 set 個 reminder 聽日交租\" which means \"Help me record an expense and set a reminder for paying rent tomorrow.\"\n\nWe need to record an expense, but they didn't specify what expense or amount. They only mentioned setting a reminder for paying rent tomorrow. Possibly they want to record the rent expense? Or maybe they want to record some other expense? The phrase \"記帳\" means record accounts, i.e., record an expense. But they didn't give details. We need to ask for clarification? However, the instruction says we have access to tools and we should use them. Possibly we can assume they want to record the rent expense? But we don't know the amount. We could ask for details, but maybe we can set the reminder first and then ask for expense details? Or we can record a placeholder expense? Better to ask for clarification.\n\nBut let's see: The user said \"幫我記帳同埋 set 個 reminder 聽日交租\". This could be interpreted as: help me record an expense (maybe the rent) and set a reminder for paying rent tomorrow. So we need to record the rent expense. However, we need the amount. We could ask: \"請問租金是多少?\" But maybe we can set the reminder",
+                    "reasoning_content": "The user wants to record an expense and set a reminder for paying rent tomorrow. They said \"幫我記帳同埋 set 個 reminder 聽日交租\" which means \"Help me record an expense and set a reminder for paying rent tomorrow.\"\n\nWe need to record an expense, but they didn't specify what expense or amount. They only mentioned setting a reminder for paying rent tomorrow. Possibly they want to record the rent expense? Or maybe they want to record some other expense? The phrase \"記帳\" means record accounts, i.e., record an expense. But they didn't give details. We need to ask for clarification? However, the instruction says we have access to tools and we should use them. Possibly we can assume they want to record the rent expense? But we don't know the amount. We could ask for details, but maybe we can set the reminder first and then ask for expense details? Or we can record a placeholder expense? Better to ask for clarification.\n\nBut let's see: The user said \"幫我記帳同埋 set 個 reminder 聽日交租\". This could be interpreted as: help me record an expense (maybe the rent) and set a reminder for paying rent tomorrow. So we need to record the rent expense. However, we need the amount. We could ask: \"請問租金是多少?\" But maybe we can set the reminder"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "length",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 437,
+                "total_tokens": 737,
+                "completion_tokens": 300,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 9.01004695892334,
+            "json": {
+              "id": "chatcmpl-8a3306341068d0e9",
+              "object": "chat.completion",
+              "created": 1777526151,
+              "model": "nvidia/nemotron-3-super-120b-a12b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "The user wants to record an expense and set a reminder for paying rent tomorrow. They said: \"幫我記帳同埋 set 個 reminder 聽日交租\" which means \"Help me record an expense and set a reminder for paying rent tomorrow.\"\n\nWe need to record an expense: but they didn't specify what item or amount. They only mentioned rent. Possibly they want to record rent expense? Or maybe they want to record some other expense? The phrase \"記帳\" could mean record an expense, but they didn't specify what. However, they said \"聽日交租\" meaning \"pay rent tomorrow\". So likely they want to set a reminder for paying rent tomorrow. For the expense recording, maybe they want to record the rent payment? But they haven't provided amount. We need to ask for clarification? However, the instructions say we have access to tools and we should use them. Possibly we can assume they want to record rent expense, but we need amount. Could ask for amount. But maybe they expect us to set reminder for rent payment and record an expense for something else? Not clear.\n\nLet's interpret: They want to record an expense (maybe they already have in mind) and set a reminder for paying rent tomorrow. Since they didn't specify expense details, we might need to ask for them. However, as an AI, we could make a reasonable assumption: perhaps they want to record the rent",
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": "The user wants to record an expense and set a reminder for paying rent tomorrow. They said: \"幫我記帳同埋 set 個 reminder 聽日交租\" which means \"Help me record an expense and set a reminder for paying rent tomorrow.\"\n\nWe need to record an expense: but they didn't specify what item or amount. They only mentioned rent. Possibly they want to record rent expense? Or maybe they want to record some other expense? The phrase \"記帳\" could mean record an expense, but they didn't specify what. However, they said \"聽日交租\" meaning \"pay rent tomorrow\". So likely they want to set a reminder for paying rent tomorrow. For the expense recording, maybe they want to record the rent payment? But they haven't provided amount. We need to ask for clarification? However, the instructions say we have access to tools and we should use them. Possibly we can assume they want to record rent expense, but we need amount. Could ask for amount. But maybe they expect us to set reminder for rent payment and record an expense for something else? Not clear.\n\nLet's interpret: They want to record an expense (maybe they already have in mind) and set a reminder for paying rent tomorrow. Since they didn't specify expense details, we might need to ask for them. However, as an AI, we could make a reasonable assumption: perhaps they want to record the rent",
+                    "reasoning_content": "The user wants to record an expense and set a reminder for paying rent tomorrow. They said: \"幫我記帳同埋 set 個 reminder 聽日交租\" which means \"Help me record an expense and set a reminder for paying rent tomorrow.\"\n\nWe need to record an expense: but they didn't specify what item or amount. They only mentioned rent. Possibly they want to record rent expense? Or maybe they want to record some other expense? The phrase \"記帳\" could mean record an expense, but they didn't specify what. However, they said \"聽日交租\" meaning \"pay rent tomorrow\". So likely they want to set a reminder for paying rent tomorrow. For the expense recording, maybe they want to record the rent payment? But they haven't provided amount. We need to ask for clarification? However, the instructions say we have access to tools and we should use them. Possibly we can assume they want to record rent expense, but we need amount. Could ask for amount. But maybe they expect us to set reminder for rent payment and record an expense for something else? Not clear.\n\nLet's interpret: They want to record an expense (maybe they already have in mind) and set a reminder for paying rent tomorrow. Since they didn't specify expense details, we might need to ask for them. However, as an AI, we could make a reasonable assumption: perhaps they want to record the rent"
+                  },
+                  "logprobs": null,
+                  "finish_reason": "length",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 437,
+                "total_tokens": 737,
+                "completion_tokens": 300,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "model": "deepseek-ai/deepseek-v4-flash",
+      "scenarios": {
+        "A": [
+          {
+            "status_code": 200,
+            "latency_s": 5.617840051651001,
+            "json": {
+              "id": "ec87a708af764eeebd8532e686a73126",
+              "object": "chat.completion",
+              "created": 1777525937,
+              "model": "deepseek-ai/deepseek-v4-flash",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "Function calling 係指讓 AI 模型能夠根據用戶指令，自動選擇並呼叫預先定義好的外部函數或 API 來執行特定任務（例如查天氣、發郵件），從而獲取即時資料或完成操作。",
+                    "reasoning_content": null,
+                    "tool_calls": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "stop",
+                  "matched_stop": 1
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 13,
+                "total_tokens": 65,
+                "completion_tokens": 52,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0
+              },
+              "metadata": {
+                "weight_version": "default"
+              }
+            }
+          }
+        ],
+        "B": [
+          {
+            "status_code": 200,
+            "latency_s": 3.155595064163208,
+            "json": {
+              "id": "4584ac4544714b2f89505f5dfeefcb52",
+              "object": "chat.completion",
+              "created": 1777526163,
+              "model": "deepseek-ai/deepseek-v4-flash",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "reasoning_content": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_04525b28f538449997dc516b",
+                        "index": 0,
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ]
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "matched_stop": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 320,
+                "total_tokens": 381,
+                "completion_tokens": 61,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0
+              },
+              "metadata": {
+                "weight_version": "default"
+              }
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 6.309086799621582,
+            "json": {
+              "id": "ed5da23fd023434a8bce9177dcf7ceed",
+              "object": "chat.completion",
+              "created": 1777526170,
+              "model": "deepseek-ai/deepseek-v4-flash",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "reasoning_content": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_c966bbb30af14989b9b97f44",
+                        "index": 0,
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ]
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "matched_stop": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 320,
+                "total_tokens": 381,
+                "completion_tokens": 61,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0
+              },
+              "metadata": {
+                "weight_version": "default"
+              }
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 12.360427856445312,
+            "json": {
+              "id": "7e9e65f40a8b425a8c8feff52e8b0b24",
+              "object": "chat.completion",
+              "created": 1777526183,
+              "model": "deepseek-ai/deepseek-v4-flash",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "reasoning_content": null,
+                    "tool_calls": [
+                      {
+                        "id": "call_53ca5debf67243208397c8fb",
+                        "index": 0,
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ]
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "matched_stop": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 320,
+                "total_tokens": 381,
+                "completion_tokens": 61,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0
+              },
+              "metadata": {
+                "weight_version": "default"
+              }
+            }
+          }
+        ],
+        "C": [
+          {
+            "status_code": 200,
+            "latency_s": 4.036127090454102,
+            "json": {
+              "id": "d305ce6742fe4fa7ad295f079deeb291",
+              "object": "chat.completion",
+              "created": 1777526187,
+              "model": "deepseek-ai/deepseek-v4-flash",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "\n\n好的！我先幫你記帳，然後設定聽日交租嘅提醒。不過我需要你提供多啲資料：\n\n1. **記帳**：交租係幾多錢呢？\n2. **提醒**：聽日你想幾點收到提醒？\n\n你可以話我知，例如：「交租 $12000，聽日早上 9 點提醒我」咁樣。",
+                    "reasoning_content": null,
+                    "tool_calls": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "stop",
+                  "matched_stop": 1
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 398,
+                "total_tokens": 482,
+                "completion_tokens": 84,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0
+              },
+              "metadata": {
+                "weight_version": "default"
+              }
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 36.80740976333618,
+            "json": {
+              "id": "a4013628cc3544efa22b467b7691bb84",
+              "object": "chat.completion",
+              "created": 1777526225,
+              "model": "deepseek-ai/deepseek-v4-flash",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "\n\n好的！我先幫你記帳同設定提醒。不過我需要多啲資料：\n\n1. **記帳**：交租係幾多錢呢？\n2. **提醒**：聽日想幾點提醒你？\n\n請話俾我知租金金額同想幾點收到提醒～",
+                    "reasoning_content": null,
+                    "tool_calls": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "stop",
+                  "matched_stop": 1
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 398,
+                "total_tokens": 461,
+                "completion_tokens": 63,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0
+              },
+              "metadata": {
+                "weight_version": "default"
+              }
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 3.0933570861816406,
+            "json": {
+              "id": "97a7773484ef48dc8a1de5a73b36b80f",
+              "object": "chat.completion",
+              "created": 1777526228,
+              "model": "deepseek-ai/deepseek-v4-flash",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "\n\n好的！我先幫你記帳同設定提醒。不過我需要多啲資料：\n\n1. **記帳**：交租係幾多錢呢？\n2. **提醒**：聽日幾點提醒你？\n\n請話俾我知租金金額同埋你想聽日幾點收到提醒？",
+                    "reasoning_content": null,
+                    "tool_calls": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "stop",
+                  "matched_stop": 1
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 398,
+                "total_tokens": 463,
+                "completion_tokens": 65,
+                "prompt_tokens_details": null,
+                "reasoning_tokens": 0
+              },
+              "metadata": {
+                "weight_version": "default"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "model": "z-ai/glm-5.1",
+      "scenarios": {
+        "A": [
+          {
+            "error": "Command '['curl', '-s', '-w', 'nHTTP:%{http_code}', 'https://integrate.api.nvidia.com/v1/chat/completions', '-H', 'Authorization: Bearer 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', '-H', 'Content-Type: application/json', '-d', '{\"model\": \"z-ai/glm-5.1\", \"messages\": [{\"role\": \"user\", \"content\": \"\\\\u7528\\\\u4e00\\\\u53e5\\\\u8a71\\\\u89e3\\\\u91cb\\\\u54a9\\\\u4fc2 function calling\"}], \"temperature\": 0.1, \"max_tokens\": 300}']' timed out after 60 seconds",
+            "status_code": null,
+            "latency_s": 60.00819778442383
+          }
+        ]
+      }
+    },
+    {
+      "model": "qwen/qwen3.5-122b-a10b",
+      "scenarios": {
+        "A": [
+          {
+            "status_code": 200,
+            "latency_s": 0.8903658390045166,
+            "json": {
+              "id": "chatcmpl-9e4977f6f8125e2a",
+              "object": "chat.completion",
+              "created": 1777525998,
+              "model": "qwen/qwen3.5-122b-a10b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "Function calling 係一種讓大型語言模型（LLM）能夠識別用戶意圖，並自動生成結構化數據以調用外部程式函數（例如查詢天氣、執行計算或操作資料庫），從而突破純文本生成限制、實現與現實世界互動的技術。",
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "stop",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 21,
+                "total_tokens": 80,
+                "completion_tokens": 59,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          }
+        ],
+        "B": [
+          {
+            "status_code": 200,
+            "latency_s": 6.34985089302063,
+            "json": {
+              "id": "chatcmpl-a3e9868fc80e1d4d",
+              "object": "chat.completion",
+              "created": 1777526229,
+              "model": "qwen/qwen3.5-122b-a10b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-8488f8e118f30f76",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 312,
+                "total_tokens": 351,
+                "completion_tokens": 39,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 1.0878641605377197,
+            "json": {
+              "id": "chatcmpl-964da16598f142c4",
+              "object": "chat.completion",
+              "created": 1777526236,
+              "model": "qwen/qwen3.5-122b-a10b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-a22d796cd3218403",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 312,
+                "total_tokens": 351,
+                "completion_tokens": 39,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 1.5758981704711914,
+            "json": {
+              "id": "chatcmpl-a8d38005d055c8d7",
+              "object": "chat.completion",
+              "created": 1777526238,
+              "model": "qwen/qwen3.5-122b-a10b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-a5db159bfcd4cc51",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 312,
+                "total_tokens": 351,
+                "completion_tokens": 39,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          }
+        ],
+        "C": [
+          {
+            "status_code": 200,
+            "latency_s": 3.9152629375457764,
+            "json": {
+              "id": "chatcmpl-bf41b363937ed585",
+              "object": "chat.completion",
+              "created": 1777526240,
+              "model": "qwen/qwen3.5-122b-a10b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "好的，請告訴我你今日記咗邊幾樣嘢同埋幾錢？另外，聽日交租嘅具體時間係幾點？（例如：聽日 10:00 或 2024-05-21T10:00:00）",
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "stop",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 393,
+                "total_tokens": 461,
+                "completion_tokens": 68,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 1.0125088691711426,
+            "json": {
+              "id": "chatcmpl-9cfee5b8b989a3c0",
+              "object": "chat.completion",
+              "created": 1777526244,
+              "model": "qwen/qwen3.5-122b-a10b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "好的，請告訴我：\n1. 你今日買咗咩？幾錢？（我要記帳）\n2. 聽日交租嘅具體時間係幾點？（我要設定提醒）",
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "stop",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 393,
+                "total_tokens": 440,
+                "completion_tokens": 47,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 2.5741658210754395,
+            "json": {
+              "id": "chatcmpl-b7b6ac00ceabc0f5",
+              "object": "chat.completion",
+              "created": 1777526246,
+              "model": "qwen/qwen3.5-122b-a10b",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "好的，請告訴我你今日記咗邊幾樣嘢同埋幾錢？另外，聽日交租嘅具體時間係幾點？（例如：聽日 10:00 或 2023-10-25T10:00:00）",
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "stop",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 393,
+                "total_tokens": 461,
+                "completion_tokens": 68,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "model": "nvidia/gpt-oss-120b",
+      "scenarios": {
+        "A": [
+          {
+            "status_code": 404,
+            "latency_s": 0.248427152633667,
+            "text": "404 page not found\n"
+          }
+        ]
+      }
+    },
+    {
+      "model": "nvidia/gpt-oss-20b",
+      "scenarios": {
+        "A": [
+          {
+            "status_code": 404,
+            "latency_s": 0.2608509063720703,
+            "text": "404 page not found\n"
+          }
+        ]
+      }
+    },
+    {
+      "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+      "scenarios": {
+        "A": [
+          {
+            "status_code": 200,
+            "latency_s": 1.698071002960205,
+            "json": {
+              "id": "chat-e296967bb189466b82470bf4ca1cdf5f",
+              "object": "chat.completion",
+              "created": 1777526001,
+              "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "一個簡潔的句子：\"function calling 是指在程式碼中呼叫一個定義好的 function，讓它執行其內容。\""
+                  },
+                  "logprobs": null,
+                  "finish_reason": "stop",
+                  "stop_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 27,
+                "total_tokens": 62,
+                "completion_tokens": 35
+              },
+              "prompt_logprobs": null
+            }
+          }
+        ],
+        "B": [
+          {
+            "status_code": 200,
+            "latency_s": 2.7664661407470703,
+            "json": {
+              "id": "chat-77c0471b028c44fdafa2be3d1a95afcd",
+              "object": "chat.completion",
+              "created": 1777526249,
+              "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "tool_calls": [
+                      {
+                        "id": "IdXcmu0Z9",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"\\u5496\\u5561\", \"amount\": 38.0}"
+                        }
+                      }
+                    ]
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 340,
+                "total_tokens": 374,
+                "completion_tokens": 34
+              },
+              "prompt_logprobs": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 4.551892280578613,
+            "json": {
+              "id": "chat-fc3c3c59e7db42968249f81be51d25bf",
+              "object": "chat.completion",
+              "created": 1777526252,
+              "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "tool_calls": [
+                      {
+                        "id": "00Ps4m07B",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"\\u5496\\u5561\", \"amount\": 38.0}"
+                        }
+                      }
+                    ]
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 340,
+                "total_tokens": 374,
+                "completion_tokens": 34
+              },
+              "prompt_logprobs": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 3.128227949142456,
+            "json": {
+              "id": "chat-ee8039079c79464bb84d193583bb2aed",
+              "object": "chat.completion",
+              "created": 1777526257,
+              "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "tool_calls": [
+                      {
+                        "id": "7R0lsCKqv",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"\\u5496\\u5561\", \"amount\": 38.0}"
+                        }
+                      }
+                    ]
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 340,
+                "total_tokens": 374,
+                "completion_tokens": 34
+              },
+              "prompt_logprobs": null
+            }
+          }
+        ],
+        "C": [
+          {
+            "status_code": 200,
+            "latency_s": 2.9754650592803955,
+            "json": {
+              "id": "chat-07cecfe6fb31466ebab6297cd53cbff8",
+              "object": "chat.completion",
+              "created": 1777526261,
+              "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "tool_calls": [
+                      {
+                        "id": "hAGiKy6Co",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"rent\", \"amount\": 1500.0}"
+                        }
+                      },
+                      {
+                        "id": "hdhsgIgjb",
+                        "type": "function",
+                        "function": {
+                          "name": "set_reminder",
+                          "arguments": "{\"task\": \"\\u4ea4\\u79df\", \"datetime\": \"2023-10-15T12:00:00\"}"
+                        }
+                      }
+                    ]
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 422,
+                "total_tokens": 489,
+                "completion_tokens": 67
+              },
+              "prompt_logprobs": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 2.156796932220459,
+            "json": {
+              "id": "chat-df674a33010f47e48b179452d2261736",
+              "object": "chat.completion",
+              "created": 1777526265,
+              "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "tool_calls": [
+                      {
+                        "id": "15ok6bfAi",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"rent\", \"amount\": 1500}"
+                        }
+                      },
+                      {
+                        "id": "9wM9wYhq1",
+                        "type": "function",
+                        "function": {
+                          "name": "set_reminder",
+                          "arguments": "{\"task\": \"\\u4ea4\\u79df\", \"datetime\": \"2023-10-05T12:00:00\"}"
+                        }
+                      }
+                    ]
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 422,
+                "total_tokens": 487,
+                "completion_tokens": 65
+              },
+              "prompt_logprobs": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 4.993917942047119,
+            "json": {
+              "id": "chat-c2f871d6c55f49c290fa8fc68ebab82c",
+              "object": "chat.completion",
+              "created": 1777526267,
+              "model": "nvidia/llama-3.1-nemotron-nano-8b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "tool_calls": [
+                      {
+                        "id": "6QdZvy5c4",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"rent\", \"amount\": 1500.0}"
+                        }
+                      },
+                      {
+                        "id": "gBkeqfF1Z",
+                        "type": "function",
+                        "function": {
+                          "name": "set_reminder",
+                          "arguments": "{\"task\": \"\\u4ea4\\u79df\", \"datetime\": \"2023-10-15T12:00:00\"}"
+                        }
+                      }
+                    ]
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null
+                }
+              ],
+              "usage": {
+                "prompt_tokens": 422,
+                "total_tokens": 489,
+                "completion_tokens": 67
+              },
+              "prompt_logprobs": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
+      "scenarios": {
+        "A": [
+          {
+            "status_code": 200,
+            "latency_s": 1.8189470767974854,
+            "json": {
+              "id": "chatcmpl-b0fa8b3babe8c3d4",
+              "object": "chat.completion",
+              "created": 1777526003,
+              "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": "Function calling 是指在程式執行過程中，呼叫（invoke）並執行事先定義好的程式碼塊（function或方法），以完成特定任務的動作。",
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "stop",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 31,
+                "total_tokens": 78,
+                "completion_tokens": 47,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          }
+        ],
+        "B": [
+          {
+            "status_code": 200,
+            "latency_s": 1.3600802421569824,
+            "json": {
+              "id": "chatcmpl-8fe0b094ab239f5c",
+              "object": "chat.completion",
+              "created": 1777526272,
+              "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-b67e664a9b9b9020",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 216,
+                "total_tokens": 241,
+                "completion_tokens": 25,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 1.1906068325042725,
+            "json": {
+              "id": "chatcmpl-82428295c4760a20",
+              "object": "chat.completion",
+              "created": 1777526274,
+              "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-9691c7b28d441684",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 216,
+                "total_tokens": 241,
+                "completion_tokens": 25,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 7.804386138916016,
+            "json": {
+              "id": "chatcmpl-abb5b87a71452200",
+              "object": "chat.completion",
+              "created": 1777526276,
+              "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-a7e55fa97d6b4097",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"咖啡\", \"amount\": 38}"
+                        }
+                      }
+                    ],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 216,
+                "total_tokens": 241,
+                "completion_tokens": 25,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          }
+        ],
+        "C": [
+          {
+            "status_code": 200,
+            "latency_s": 1.9402658939361572,
+            "json": {
+              "id": "chatcmpl-b16defa26a01d52e",
+              "object": "chat.completion",
+              "created": 1777526284,
+              "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-914a02037b0790a4",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"租金\", \"amount\": 10000}"
+                        }
+                      },
+                      {
+                        "id": "chatcmpl-tool-b4a55f23965a50c7",
+                        "type": "function",
+                        "function": {
+                          "name": "set_reminder",
+                          "arguments": "{\"task\": \"交租\", \"datetime\": \"2024-03-16T00:00:00Z\"}"
+                        }
+                      }
+                    ],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 298,
+                "total_tokens": 346,
+                "completion_tokens": 48,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 3.269646167755127,
+            "json": {
+              "id": "chatcmpl-beb57fd72500fe53",
+              "object": "chat.completion",
+              "created": 1777526287,
+              "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-bf58933b0e3d3948",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"租金\", \"amount\": 10000}"
+                        }
+                      },
+                      {
+                        "id": "chatcmpl-tool-b8e7c9260f1b8778",
+                        "type": "function",
+                        "function": {
+                          "name": "set_reminder",
+                          "arguments": "{\"task\": \"交租\", \"datetime\": \"2024-03-16T00:00:00Z\"}"
+                        }
+                      }
+                    ],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 298,
+                "total_tokens": 346,
+                "completion_tokens": 48,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          },
+          {
+            "status_code": 200,
+            "latency_s": 1.6552658081054688,
+            "json": {
+              "id": "chatcmpl-8a15cedcdb7864b6",
+              "object": "chat.completion",
+              "created": 1777526290,
+              "model": "nvidia/llama-3.3-nemotron-super-49b-v1",
+              "choices": [
+                {
+                  "index": 0,
+                  "message": {
+                    "role": "assistant",
+                    "content": null,
+                    "refusal": null,
+                    "annotations": null,
+                    "audio": null,
+                    "function_call": null,
+                    "tool_calls": [
+                      {
+                        "id": "chatcmpl-tool-8d819e04070e2b1e",
+                        "type": "function",
+                        "function": {
+                          "name": "log_expense",
+                          "arguments": "{\"item\": \"租金\", \"amount\": 10000}"
+                        }
+                      },
+                      {
+                        "id": "chatcmpl-tool-9b4c969ab7b4cfd8",
+                        "type": "function",
+                        "function": {
+                          "name": "set_reminder",
+                          "arguments": "{\"task\": \"交租\", \"datetime\": \"2024-03-16T00:00:00Z\"}"
+                        }
+                      }
+                    ],
+                    "reasoning": null,
+                    "reasoning_content": null
+                  },
+                  "logprobs": null,
+                  "finish_reason": "tool_calls",
+                  "stop_reason": null,
+                  "token_ids": null
+                }
+              ],
+              "service_tier": null,
+              "system_fingerprint": null,
+              "usage": {
+                "prompt_tokens": 298,
+                "total_tokens": 346,
+                "completion_tokens": 48,
+                "prompt_tokens_details": null
+              },
+              "prompt_logprobs": null,
+              "prompt_token_ids": null,
+              "kv_transfer_params": null
+            }
+          }
+        ]
+      }
+    },
+    {
+      "model": "google/gemma-4-31b-it",
+      "scenarios": {
+        "A": [
+          {
+            "error": "Command '['curl', '-s', '-w', 'nHTTP:%{http_code}', 'https://integrate.api.nvidia.com/v1/chat/completions', '-H', 'Authorization: Bearer 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', '-H', 'Content-Type: application/json', '-d', '{\"model\": \"google/gemma-4-31b-it\", \"messages\": [{\"role\": \"user\", \"content\": \"\\\\u7528\\\\u4e00\\\\u53e5\\\\u8a71\\\\u89e3\\\\u91cb\\\\u54a9\\\\u4fc2 function calling\"}], \"temperature\": 0.1, \"max_tokens\": 300}']' timed out after 60 seconds",
+            "status_code": null,
+            "latency_s": 60.00638222694397
+          }
+        ]
+      }
+    },
+    {
+      "model": "moonshot/kimi-2.5",
+      "scenarios": {
+        "A": [
+          {
+            "status_code": 404,
+            "latency_s": 0.2995450496673584,
+            "text": "404 page not found\n"
+          }
+        ]
+      }
+    }
+  ],
+  "meta": {
+    "nim_base": "https://integrate.api.nvidia.com/v1",
+    "timestamp": 1777525917.7632809
+  }
+}

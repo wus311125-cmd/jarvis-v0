@@ -5,5 +5,11 @@
       "args": ["/Users/nhp/jarvis-v0/mcp-agents/server.py"],
       "env": {}
     }
+  },
+  "provider": {
+    "nvidia": {
+      "apiKey": "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",
+      "baseURL": "https://integrate.api.nvidia.com/v1"
+    }
   }
 }
