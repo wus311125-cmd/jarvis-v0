@@ -1,7 +1,10 @@
 import os
 import json
 from typing import Any, Dict
-import httpx
+try:
+    import httpx
+except Exception:
+    httpx = None
 
 # Use same Notion-Version as jarvis.student to satisfy handoff constraint
 from jarvis import student as _student
@@ -29,12 +32,21 @@ def search_notion(query: str, page_size: int = 5) -> Dict[str, Any]:
     url = 'https://api.notion.com/v1/search'
     body = {'query': query, 'page_size': page_size}
     headers = _get_headers()
-    resp = httpx.post(url, headers=headers, json=body, timeout=15.0)
-    try:
-        resp.raise_for_status()
-    except httpx.HTTPStatusError as e:
-        raise RuntimeError(f'HTTP {resp.status_code}: {resp.text}')
-    return resp.json()
+    if httpx:
+        resp = httpx.post(url, headers=headers, json=body, timeout=15.0)
+        try:
+            resp.raise_for_status()
+        except Exception:
+            raise RuntimeError(f'HTTP {resp.status_code}: {resp.text}')
+        return resp.json()
+    else:
+        import requests
+        resp = requests.post(url, headers=headers, json=body, timeout=15)
+        try:
+            resp.raise_for_status()
+        except Exception:
+            raise RuntimeError(f'HTTP {resp.status_code}: {resp.text}')
+        return resp.json()
 
 
 def query_notion_database(database_id: str, filter_json: Dict | None = None, page_size: int = 20) -> Dict[str, Any]:
@@ -46,12 +58,21 @@ def query_notion_database(database_id: str, filter_json: Dict | None = None, pag
     # enforce page_size cap at 20 per handoff
     body.setdefault('page_size', min(int(page_size), 20))
     headers = _get_headers()
-    resp = httpx.post(url, headers=headers, json=body, timeout=15.0)
-    try:
-        resp.raise_for_status()
-    except httpx.HTTPStatusError:
-        raise RuntimeError(f'HTTP {resp.status_code}: {resp.text}')
-    return resp.json()
+    if httpx:
+        resp = httpx.post(url, headers=headers, json=body, timeout=15.0)
+        try:
+            resp.raise_for_status()
+        except Exception:
+            raise RuntimeError(f'HTTP {resp.status_code}: {resp.text}')
+        return resp.json()
+    else:
+        import requests
+        resp = requests.post(url, headers=headers, json=body, timeout=15)
+        try:
+            resp.raise_for_status()
+        except Exception:
+            raise RuntimeError(f'HTTP {resp.status_code}: {resp.text}')
+        return resp.json()
 
 
 def read_notion_page(page_id: str, truncate_chars: int = 3000) -> Dict[str, Any]:
@@ -61,12 +82,21 @@ def read_notion_page(page_id: str, truncate_chars: int = 3000) -> Dict[str, Any]
     """
     url = f'https://api.notion.com/v1/blocks/{page_id}/children'
     headers = _get_headers()
-    resp = httpx.get(url, headers=headers, timeout=15.0)
-    try:
-        resp.raise_for_status()
-    except httpx.HTTPStatusError:
-        raise RuntimeError(f'HTTP {resp.status_code}: {resp.text}')
-    data = resp.json()
+    if httpx:
+        resp = httpx.get(url, headers=headers, timeout=15.0)
+        try:
+            resp.raise_for_status()
+        except Exception:
+            raise RuntimeError(f'HTTP {resp.status_code}: {resp.text}')
+        data = resp.json()
+    else:
+        import requests
+        resp = requests.get(url, headers=headers, timeout=15)
+        try:
+            resp.raise_for_status()
+        except Exception:
+            raise RuntimeError(f'HTTP {resp.status_code}: {resp.text}')
+        data = resp.json()
     # Flatten paragraph blocks into a simple text body
     texts = []
     for b in data.get('results', []):
