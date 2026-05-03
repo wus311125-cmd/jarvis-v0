@@ -1,8 +1,10 @@
 import os
 import json
 import ast
-import httpx
-import os
+try:
+    import httpx
+except Exception:
+    httpx = None  # optional dependency; used only when ONLINE routing is enabled
 import logging
 import sqlite3
 import re
@@ -318,7 +320,8 @@ def get_db_path() -> str:
     try:
         from skills import intake
         return str(intake.DB_PATH)
-    except Exception:
+    except (ImportError, ModuleNotFoundError, AttributeError) as e:
+        logging.getLogger(__name__).debug("intake DB not available: %s", e)
         return os.path.join(os.path.dirname(__file__), 'jarvis.db')
 
 
@@ -388,7 +391,8 @@ def detect_mode(chat_history: list[dict] | None, window: int = 5) -> str:
         if dominant_count / total >= 0.6:
             return dominant_mode
         return 'mixed'
-    except Exception:
+    except sqlite3.Error as e:
+        logging.getLogger(__name__).warning("DB error in detect_mode: %s", e)
         # fallback: try to inspect provided chat_history for any explicit tool markers
         try:
             if chat_history and isinstance(chat_history, list):
@@ -412,9 +416,12 @@ def detect_mode(chat_history: list[dict] | None, window: int = 5) -> str:
                 if dominant_count / total >= 0.6:
                     return dominant_mode
                 return 'mixed'
-        except Exception:
-            pass
-    return 'chat'
+        except Exception as e2:
+            logging.getLogger(__name__).exception("Unexpected error parsing chat_history in detect_mode: %s", e2)
+            return 'chat'
+    except Exception as e:
+        logging.getLogger(__name__).exception("Unexpected error in detect_mode: %s", e)
+        return 'chat'
 
 
 def adjust_threshold(base_threshold: float, mode: str, tool_name: str | None) -> float:
@@ -452,7 +459,7 @@ def _load_recent_history(limit: int = 10) -> List[str]:
         try:
             from skills import intake
             db_path = str(intake.DB_PATH)
-        except Exception:
+        except (ImportError, ModuleNotFoundError, AttributeError):
             db_path = os.path.join(os.path.dirname(__file__), 'jarvis.db')
         db = sqlite3.connect(db_path)
         cur = db.cursor()
@@ -462,8 +469,11 @@ def _load_recent_history(limit: int = 10) -> List[str]:
             role, content = r
             out.append(f"{role}: {content}")
         db.close()
-    except Exception:
-        # fallback empty
+    except (sqlite3.Error, OSError) as e:
+        logging.getLogger(__name__).warning("Failed to load recent history: %s", e)
+        return []
+    except Exception as e:
+        logging.getLogger(__name__).exception("Unexpected error in _load_recent_history: %s", e)
         return []
     return out
 
@@ -701,7 +711,7 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
                         if nv.is_integer():
                             nv = int(nv)
                         new_value = nv
-                    except Exception:
+                    except (TypeError, ValueError):
                         # leave as-is (string) if can't parse
                         pass
                 # Fast-path distilled corrections are treated as high-confidence executes
@@ -719,6 +729,9 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
     try:
         mode = detect_mode(None, window=5)
     except Exception:
+        mode = 'mixed'
+    except Exception as e:
+        logging.getLogger(__name__).exception("detect_mode failed: %s", e)
         mode = 'mixed'
     mode_prompt = get_mode_prompt(mode)
 
@@ -775,15 +788,18 @@ def route(text: str, entity_context: str = '', recent: List[str] = None, history
     except Exception:
         pass
 
-    # Local heuristic fallback when no API key (allows offline E2E smoke tests)
-    if OPENROUTER_API_KEY is None:
+    # Local heuristic fallback when no API key or httpx missing (allows offline E2E smoke tests)
+    if OPENROUTER_API_KEY is None or httpx is None:
         # Offline fallback: very small heuristic set for local smoke tests only.
         # Keep minimal to avoid divergence from LLM-native routing in production.
         # explicit -amount / +amount
         m = re.match(r'^\s*([+-])(\d+(?:\.\d+)?)\s*(.*)$', text)
         if m:
             sign, amt_s, rest = m.groups()
-            amt = float(amt_s)
+            try:
+                amt = abs(float(amt_s))
+            except (TypeError, ValueError):
+                amt = 0.0
             if sign == '-':
                 return {'tool': 'log_expense', 'args': {'amount': amt, 'description': rest.strip(), 'vendor': ''}, 'assistant': None}
             else:
@@ -1096,7 +1112,12 @@ def execute_tool(tool_name: str, args: dict | None):
                 }
                 rowid = _expense.store_expense(rec)
                 return {'ok': True, 'rowid': rowid, 'record': rec}
+            except (ImportError, ModuleNotFoundError) as e:
+                return {'error': f'expense skill not available: {e}'}
+            except (TypeError, ValueError) as e:
+                return {'error': f'invalid amount: {e}'}
             except Exception as e:
+                logging.getLogger(__name__).exception("Unexpected error in log_expense: %s", e)
                 return {'error': str(e)}
 
         # log_income: acknowledge or store as income (mirror of expense store with positive amount)
@@ -1117,30 +1138,50 @@ def execute_tool(tool_name: str, args: dict | None):
                 # We'll store positive amount but tag category for income.
                 rowid = _expense.store_expense(rec)
                 return {'ok': True, 'rowid': rowid, 'record': rec}
+            except (ImportError, ModuleNotFoundError) as e:
+                return {'error': f'expense skill not available: {e}'}
+            except (TypeError, ValueError) as e:
+                return {'error': f'invalid amount: {e}'}
             except Exception as e:
+                logging.getLogger(__name__).exception("Unexpected error in log_income: %s", e)
                 return {'error': str(e)}
 
         # query_expenses: simple aggregator for period
         if tool_name == 'query_expenses':
             try:
                 from skills import expense as _expense
-                period = args.get('period','today')
+                period = (args.get('period','today') if isinstance(args, dict) else 'today')
                 conn = sqlite3.connect(str(_expense.DB_PATH))
                 cur = conn.cursor()
                 if period in ('today','this_day'):
                     d = datetime.now().date().isoformat()
-                    rows = cur.execute("SELECT amount FROM expenses WHERE date=?", (d,)).fetchall()
+                    cur.execute("SELECT amount FROM expenses WHERE date=?", (d,))
+                    rows = cur.fetchall()
                 elif period in ('this_month', 'month'):
                     today = datetime.now().date()
                     month_start = today.replace(day=1).isoformat()
-                    rows = cur.execute("SELECT amount FROM expenses WHERE date>=?", (month_start,)).fetchall()
+                    cur.execute("SELECT amount FROM expenses WHERE date>=?", (month_start,))
+                    rows = cur.fetchall()
                 else:
-                    # fallback: return all
-                    rows = cur.execute("SELECT amount FROM expenses").fetchall()
-                total = sum([r[0] for r in rows]) if rows else 0
+                    # fallback: return all safely
+                    cur.execute("SELECT amount FROM expenses")
+                    rows = cur.fetchall()
+                # defensively coerce amounts to floats
+                total = 0.0
+                for r in rows:
+                    try:
+                        total += float(r[0])
+                    except (TypeError, ValueError):
+                        continue
                 conn.close()
                 return {'period': period, 'total': total, 'count': len(rows)}
+            except (ImportError, ModuleNotFoundError) as e:
+                return {'error': f'expense skill unavailable: {e}'}
+            except sqlite3.Error as e:
+                logging.getLogger(__name__).exception("DB error in query_expenses: %s", e)
+                return {'error': str(e)}
             except Exception as e:
+                logging.getLogger(__name__).exception("Unexpected error in query_expenses: %s", e)
                 return {'error': str(e)}
 
         # Notion tools: thin wrappers to jarvis.notion_client per handoff constraints
@@ -1200,7 +1241,10 @@ def execute_tool(tool_name: str, args: dict | None):
 
                 # parameterize value; column name inserted from whitelist only
                 if field == 'amount':
-                    val = float(new_value)
+                    try:
+                        val = float(new_value)
+                    except (TypeError, ValueError) as e:
+                        return {'error': f'invalid amount: {e}'}
                 else:
                     val = str(new_value)
 
@@ -1209,7 +1253,13 @@ def execute_tool(tool_name: str, args: dict | None):
                 conn.commit()
                 conn.close()
                 return {'ok': True, 'id': eid, 'field': field, 'new_value': val}
+            except (ImportError, ModuleNotFoundError) as e:
+                return {'error': f'expense skill not available: {e}'}
+            except sqlite3.Error as e:
+                logging.getLogger(__name__).exception("DB error in correct_last_entry: %s", e)
+                return {'error': str(e)}
             except Exception as e:
+                logging.getLogger(__name__).exception("Unexpected error in correct_last_entry: %s", e)
                 return {'error': str(e)}
 
         # new_student: expects name required, other fields optional
