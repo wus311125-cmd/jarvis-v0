@@ -9,7 +9,7 @@ import logging
 import sqlite3
 import re
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 # skills.intake is optional in some test environments; import lazily where needed
 
@@ -325,7 +325,7 @@ def get_db_path() -> str:
         return os.path.join(os.path.dirname(__file__), 'jarvis.db')
 
 
-def detect_mode(chat_history: list[dict] | None, window: int = 5) -> str:
+def detect_mode(chat_history: Optional[List[Dict[str, Any]]] = None, window: int = 5) -> str:
     """
     Read recent chat_history rows (prefer DB tool_used column) and return dominant mode.
     Returns one of: "expense", "student", "chat", "correction", "mixed".
@@ -685,7 +685,7 @@ def build_few_shot_prompt(shots: list[dict]) -> str:
 # --------------------------------------------------------------------------------------
 
 
-def route(text: str, entity_context: str = '', recent: List[str] = None, history: List[Dict[str,str]] = None) -> Dict[str, Any]:
+def route(text: str, entity_context: str = '', recent: Optional[List[str]] = None, history: Optional[List[Dict[str, str]]] = None) -> Dict[str, Any]:
     """Send user text to OpenRouter with function definitions.
     Returns: { 'tool': name | None, 'args': dict | None, 'assistant': str | None }
     If OPENROUTER_API_KEY is not set, use lightweight local heuristics as fallback to enable offline testing.
@@ -1073,7 +1073,28 @@ def generate_clarification(user_input: str, suggested_tool: str) -> str:
     return f"你係想{desc}，定係同我傾偈？"
 
 
-def execute_tool(tool_name: str, args: dict | None):
+def validate_tool_params(tool_name: str, args: Optional[Dict[str, Any]]) -> None:
+    """Minimal validation for common tools. Raise ValueError on invalid input.
+
+    This is intentionally small and conservative — it only checks a few
+    common invariants so that callers get an early, consistent error.
+    """
+    if args is None:
+        return
+    # expense/income: amount should be numeric and non-negative
+    if tool_name in ("log_expense", "log_income", "record_expense", "record_income"):
+        if 'amount' not in args:
+            raise ValueError('amount is required')
+        try:
+            amt = float(args.get('amount'))
+        except (TypeError, ValueError):
+            raise ValueError('amount must be a number')
+        if amt < 0:
+            # prefer canonical positive amounts; caller can decide semantics
+            raise ValueError('amount must be non-negative')
+
+
+def execute_tool(tool_name: str, args: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     """Dispatch helper to call internal student tools.
 
     Returns the tool result or an error dict. Designed to be imported and
@@ -1081,6 +1102,12 @@ def execute_tool(tool_name: str, args: dict | None):
     """
     if args is None:
         args = {}
+    # validate basic tool params early
+    try:
+        validate_tool_params(tool_name, args)
+    except Exception as e:
+        return {'error': f'validation error: {e}'}
+
     try:
         # support batched tool calls passed as list
         if tool_name == 'batch_calls' and isinstance(args, list):
